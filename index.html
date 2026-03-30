@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Oligo Annealing Calculator</title>
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+<canvas id="particle-canvas"></canvas>
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+<!-- LOGIN SCREEN -->
+
+<div id="login-screen">
+  <div class="login-box" id="login-box-main">
+    <!-- 3D DNA Helix via Canvas -->
+    <div style="margin:-2rem -2rem 1.2rem -2rem;width:calc(100% + 4rem);height:60px;overflow:hidden;border-radius:20px 20px 0 0;background:linear-gradient(180deg,rgba(0,212,255,0.06),transparent);">
+      <canvas id="helix-canvas" style="width:100%;height:60px;display:block;"></canvas>
+    </div>
+    <div class="login-title">Oligo Annealing Calculator</div>
+    <div class="login-sub" id="login-sub-text">Sign in with your User ID</div>
+    <div class="login-field">
+      <label>USER ID</label>
+      <input type="text" id="login-uid" placeholder="z.B. DICHIAN1" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+    </div>
+    <div class="login-field">
+      <label>PASSWORD</label>
+      <input type="password" id="login-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-err" id="login-err">⚠ User ID or password incorrect.</div>
+    <button class="btn bp" style="width:100%;justify-content:center;" onclick="doLogin()">Sign In</button>
+  </div>
+  <!-- FIRST LOGIN — Passwort ändern -->
+  <div class="login-box hidden" id="login-box-first">
+    <div class="login-title" style="color:var(--accent3);">Change Password</div>
+    <div class="login-sub">First login — please set a new password.</div>
+    <div class="login-field">
+      <label>NEW PASSWORD</label>
+      <input type="password" id="new-pw1" placeholder="New password">
+    </div>
+    <div class="login-field">
+      <label>CONFIRM PASSWORD</label>
+      <input type="password" id="new-pw2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doChangePw()">
+    </div>
+    <div class="login-err" id="pw-err">⚠ Passwords do not match.</div>
+    <button class="btn bp" style="width:100%;justify-content:center;background:linear-gradient(135deg,var(--accent3),#007a41);color:#000;" onclick="doChangePw()">Set Password</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+
+<div id="admin-panel">
+  <div style="max-width:600px;margin:0 auto;padding-top:1rem;">
+    <div class="admin-header">
+      <div class="admin-title">⚙ Admin Panel — User Management</div>
+      <button class="btn bp" onclick="closeAdmin()">← Back to App</button>
+    </div>
+    <table class="user-table" id="user-table"></table>
+    <div class="admin-form">
+      <h3>+ Add New User</h3>
+      <div class="admin-grid">
+        <div class="iif"><label>USER ID</label><input type="text" id="new-uid" placeholder="z.B. MUSTERX1"></div>
+        <div class="iif"><label>FULL NAME</label><input type="text" id="new-name" placeholder="Max Muster"></div>
+        <div class="iif"><label>TEMP. PASSWORD</label><input type="text" id="new-temp-pw" placeholder="Temp-Passwort"></div>
+        <div class="iif"><label>ROLE</label>
+          <select id="new-role">
+            <option value="operator">Operator</option>
+            <option value="pruefer">Prüfer</option>
+          </select>
+        </div>
+      </div>
+      <div class="login-err" id="admin-err">⚠ Please fill all fields.</div>
+      <div class="login-ok" id="admin-ok">✓ User created successfully.</div>
+      <button class="btn bp" onclick="addUser()">+ Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- USER BADGE -->
+
+<div class="user-badge" id="user-badge"></div>
+<!-- PRINT BUTTON -->
+<button class="bprint" id="bprint-btn" onclick="printAvailablePages()" title="Bericht">PDF</button>
+
+<div class="wrap">
+  <header style="position:relative;z-index:2;">
+    <div style="width:100%;height:80px;overflow:hidden;margin-bottom:1.2rem;border-radius:12px;">
+      <canvas id="helix-main-canvas" style="width:100%;height:80px;display:block;"></canvas>
+    </div>
+    <h1>Oligo Annealing Calculator</h1>
+    <p class="subtitle">Zweistufiger Annealing-Prozess<br>Oligo-Produktion</p>
+    <p class="author">by A.Di Chiara</p>
+    <p style="font-family:'Space Mono',monospace;font-size:0.6rem;color:#2e4a6a;margin-top:0.4rem;letter-spacing:0.08em;">v3.1</p>
+  </header>
+
+  <div class="steps">
+  <button type="button" class="si active step-nav" id="si1" onclick="jumpToStep(1)">
+    <div class="sc">1</div><span class="sl">Eduktdefinition</span>
+  </button>
+
+  <button type="button" class="si step-nav" id="si2" onclick="jumpToStep(2)">
+    <div class="sc">2</div><span class="sl">Annealing 85%</span>
+  </button>
+
+  <button type="button" class="si step-nav" id="si3" onclick="jumpToStep(3)">
+    <div class="sc">3</div><span class="sl">Annealing 15%</span>
+  </button>
+
+  <button type="button" class="si step-nav" id="si4" onclick="jumpToStep(4)">
+    <div class="sc">✓</div><span class="sl">Abschluss</span>
+  </button>
+</div>
+
+  <div id="b-step1" class="section-wrap">
+    <div class="section-label">Eduktdefinition & Bereitstellung</div>
+    <div class="card">
+      <div class="ct"><span class="dot"></span>Edukte</div>
+      <div class="ig one"><div class="iif"><label>Herstellung von Batch <span style="color:var(--anti);">*</span></label><input type="text" id="batch_produkt" placeholder="Batch-Nummer Produkt" required></div></div>
+      <div class="ig">
+        <div class="iif"><label>Batch Nr. — UF Anti-Sense <span style="color:var(--anti);">*</span></label><input type="text" id="batch_sense" placeholder="Batch-Nr. Anti-Sense" required class="input-anti"></div>
+        <div class="iif"><label>Batch Nr. — UF Sense <span style="color:var(--anti);">*</span></label><input type="text" id="batch_antisense" placeholder="Batch-Nr. Sense" required class="input-sense"></div>
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:-0.6rem;"><span style="color:var(--anti);">*</span> Pflichtfelder</div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="dot"></span>Bereitstellung</div>
+      <div class="ig">
+        <div class="iif"><label><span class="v">A</span> — UF Anti-Sense [kg]</label><input type="number" id="A" placeholder="0,000" step="0.001" class="input-anti"></div>
+        <div class="iif"><label><span class="v">G</span> — UF Sense [kg]</label><input type="number" id="G" placeholder="0,000" step="0.001" class="input-sense"></div>
+      </div>
+      <div class="ig one"><div class="iif"><label><span class="v">MR1</span> — Molar Ratio Soll</label><input type="number" id="MR1" placeholder="0,0000" step="0.0001"></div></div>
+      <div class="br">
+        <button class="btn bp" onclick="calcStep1()">⚗ Berechnen</button>
+        <button class="breset" onclick="confirmReset()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GEMEINSAMER 85% RAHMEN -->
+
+  <div id="b-group85" class="hidden">
+    <div class="section-wrap" id="sw-group85">
+      <div class="section-label">Annealing 85%</div>
+
+  <!-- Berechnung 85% -->
+
+  <div id="b-calc85-inner" class="hidden">
+    <div class="card">
+      <div class="ct"><span class="dot"></span>Berechnung Annealing 85%</div>
+      <div id="r-calc85"></div>
+      <div style="margin-top:0.8rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <button class="btn bp" style="font-size:0.75rem;padding:0.45rem 1rem;" onclick="openSheet('sheet-kz85')">📊 Kennzahlen</button>
+        <button class="btn bp" onclick="showReport(1)" style="font-size:0.75rem;padding:0.45rem 1rem;">🖨 </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ist-Mengen 85% -->
+
+  <div id="b-ein85-inner" class="hidden">
+    <div class="card" style="margin-top:0.8rem;">
+      <div class="ct"><span class="dot"></span>EINGESETZTE MENGEN ANNEALING 85%</div>
+      <div class="ig">
+        <div class="iif"><label><span class="v">O</span> — <span id="lbl-o">Ist Anti-Sense [kg]</span></label><input type="number" id="O" placeholder="0,000" step="0.001" class="input-anti"></div>
+        <div class="iif"><label><span class="v">P</span> — <span id="lbl-p">Ist Sense [kg]</span></label><input type="number" id="P" placeholder="0,000" step="0.001" class="input-sense"></div>
+      </div>
+      <div class="br"><button class="btn bp" onclick="confirmOP()">✓ Bestätigen</button></div>
+      <div id="b-pak85-seite2-print" class="hidden" style="margin-top:0.6rem;">
+        <button class="btn bp" onclick="showReport(2)" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 Einwaage 85%</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  </div>
+
+  <!-- BOTTOM SHEET Kennzahlen 85% -->
+
+  <div id="sheet-kz85" class="bottom-sheet">
+    <div class="sheet-backdrop" onclick="closeSheet('sheet-kz85')"></div>
+    <div class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Berechnete Kennzahlen 85%</div>
+      <div id="ac-kz85" style="padding:0.5rem 0;"></div>
+      <button class="btn bp" style="width:100%;margin-top:1rem;" onclick="closeSheet('sheet-kz85')">✓ Schliessen</button>
+    </div>
+  </div>
+
+  <div id="b-pak85" class="hidden">
+    <div class="section-wrap">
+      <div class="pak-free">
+        <div class="pak-label">PAK85 nach Annealing in Ordnung?</div>
+        <div class="br" style="flex-wrap:nowrap;">
+          <button class="btn bok" style="flex:1;" onclick="pak85(true, this)">✓ PAK85 i.O.</button>
+          <button class="btn bnok" style="flex:1;" onclick="pak85(false, this)">✗ PAK85 n.i.O.</button>
+        </div>
+        <div id="pak85-nok" class="hidden">
+          <div class="nok-box" style="margin-top:1rem;">
+            <div style="margin-bottom:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--anti);">⚠ PAK85 n.i.O. — PAK Ergebnisse eingeben:</div>
+            <div class="ig" style="margin-bottom:0.8rem;">
+              <div class="iif"><label><span class="v">E</span> — PAK85 Sense [%]</label><input type="number" id="E_nok" placeholder="0,000" step="0.001" class="input-sense"></div>
+              <div class="iif"><label><span class="v">D</span> — PAK85 Anti-Sense [%]</label><input type="number" id="D_nok" placeholder="0,000" step="0.001" class="input-anti"></div>
+            </div>
+            <div class="br" style="margin-bottom:1rem;">
+              <button class="btn bp" onclick="confirmEDnok85()">✓ Bestätigen</button>
+            </div>
+            <!-- Auto Überschuss Badge + Buttons (versteckt bis Bestätigung) -->
+            <div id="uberschuss85-result" class="hidden">
+              <div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.6rem;letter-spacing:0.1em;text-transform:uppercase;">Überschuss Strang (berechnet)</div>
+              <div id="uberschuss85-badge" style="margin-bottom:1.2rem;min-height:2rem;">
+                <span id="uberschuss85-span"></span>
+              </div>
+              <div class="br" style="flex-wrap:nowrap;gap:0.6rem;">
+                <button id="btn-pak85nok-anti" class="btn bok" style="flex:1;min-height:52px;" onclick="pak85nok('anti')">● ANTI-SENSE</button>
+                <button id="btn-pak85nok-sense" class="btn bok" style="flex:1;min-height:52px;" onclick="pak85nok('sense')">● SENSE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAK85 n.i.O. Korrekturberechnung -->
+
+  <div id="b-pak85nok" class="hidden">
+    <div class="section-wrap">
+      <div class="card">
+        <div class="ct"><span class="dot"></span>Korrektur PAK85 n.i.O.</div>
+        <div id="r-pak85nok"></div>
+        <div class="ig" style="margin-top:1rem;">
+          <div class="iif"><label><span id="lbl-zist" style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);">Ist-Menge Zugabe [kg]</span></label><input type="number" id="Z_ist" placeholder="0,000" step="0.001" class="input-neutral"></div>
+        </div>
+        <div class="br"><button class="btn bp" onclick="confirmZugabe()">✓ Bestätigen</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAK85-2 nach Korrektur -->
+
+  <div id="b-rpak85-2" class="hidden">
+    <div class="section-wrap">
+      <div class="card">
+        <div class="ct"><span class="dot"></span>Eingabe Resultat PAK85-2 (nach Korrektur)</div>
+        <div class="ig">
+          <div class="iif"><label><span class="v">E2</span> — PAK85-2 Sense [%]</label><input type="number" id="E2" placeholder="0,000" step="0.001" oninput="updateKA2()" class="input-sense"></div>
+          <div class="iif"><label><span class="v">D2</span> — PAK85-2 Anti-Sense [%]</label><input type="number" id="D2" placeholder="0,000" step="0.001" oninput="updateKA2()" class="input-anti"></div>
+        </div>
+        <div class="ka-box">
+          <span style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--muted);">KA-2 =</span>
+          <span style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent2);" id="ka2-val">---</span>
+        </div>
+        <div id="b-pak85-2-check" class="pak-free">
+          <div class="pak-label">PAK85-2 in Ordnung?</div>
+          <div class="br" style="flex-wrap:nowrap;gap:0.5rem;">
+            <button class="btn bok" style="flex:1;font-size:0.78rem;padding:0.5rem 0.4rem;min-height:48px;" onclick="pak85v2(true)">✓ PAK85-2 i.O.</button>
+            <button class="btn bnok" style="flex:1;font-size:0.78rem;padding:0.5rem 0.4rem;min-height:48px;" onclick="pak85v2(false)">✗ PAK85-2 n.i.O.</button>
+          </div>
+          <div id="pak85-2-nok" class="hidden"><div class="nok-box nok-pulse" style="margin-top:0.8rem;">⚠ PAK85-2 n.i.O. — Prozess stoppen und Vorgesetzten informieren.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultat PAK85 — normaler Weg (PAK85 i.O.) -->
+
+  <div id="b-rpak85" class="hidden">
+    <div class="section-wrap">
+      <div class="section-label">Resultat PAK85</div>
+      <div class="card">
+        <div class="ct"><span class="dot"></span>Resultat PAK85 EINGABE</div>
+        <div class="ig">
+          <div class="iif"><label><span class="v">E</span> — PAK85 Sense [%]</label><input type="number" id="E" placeholder="0,000" step="0.001" oninput="updateKA()" class="input-sense"></div>
+          <div class="iif"><label><span class="v">D</span> — PAK85 Anti-Sense [%]</label><input type="number" id="D" placeholder="0,000" step="0.001" oninput="updateKA()" class="input-anti"></div>
+        </div>
+        <div class="ka-box">
+          <span style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--muted);">KA =</span>
+          <span style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent2);" id="ka-val">---</span>
+          <span style="font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--muted);">(1+2E%)/(1+2D%)</span>
+        </div>
+        <div class="br" style="margin-top:0.8rem;"><button class="btn bp" onclick="calcStep2()">⚗ Berechnen</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nach PAK85-2 i.O. -->
+
+  <div id="b-rpak85-weiter" class="hidden">
+    <div class="section-wrap">
+      <div class="pak-free">
+        <div class="success">✓ PAK85-2 i.O. — Weiter mit Annealing 15%</div>
+        <div style="margin-top:1rem;">
+          <button class="btn bp" onclick="calcStep2()">⚗ Annealing 15% berechnen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GEMEINSAMER 15% RAHMEN -->
+
+  <div id="b-group15" class="hidden">
+    <div class="section-wrap" id="sw-group15">
+      <div class="section-label">Annealing 15%</div>
+
+  <!-- Berechnung 15% -->
+
+  <div id="b-calc15-inner" class="hidden">
+    <div class="card">
+      <div class="ct"><span class="dot"></span>Berechnung Annealing 15%</div>
+      <div id="r-calc15"></div>
+      <div style="margin-top:0.8rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <button class="btn bp" style="font-size:0.75rem;padding:0.45rem 1rem;" onclick="openSheet('sheet-inp15')">📋 Eingabewerte</button>
+        <button class="btn bp" style="font-size:0.75rem;padding:0.45rem 1rem;" onclick="openSheet('sheet-kz15')">📊 Kennzahlen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ist-Mengen 15% -->
+
+  <div id="b-ein15-inner" class="hidden">
+    <div class="card" style="margin-top:0.8rem;">
+      <div class="ct"><span class="dot"></span>EINGESETZTE MENGEN ANNEALING 15%</div>
+      <div class="ig">
+        <div class="iif"><label><span class="v">S_ist</span> — Ist Anti-Sense [kg]</label><input type="number" id="S_ist" placeholder="0,000" step="0.001" class="input-anti"></div>
+        <div class="iif"><label><span class="v">R_ist</span> — Ist Sense [kg]</label><input type="number" id="R_ist" placeholder="0,000" step="0.001" class="input-sense"></div>
+      </div>
+      <div class="br"><button class="btn bp" onclick="confirmSR()">✓ Bestätigen</button></div>
+      <div id="b-ein15-print" class="hidden" style="margin-top:0.6rem;">
+        <button class="btn bp" onclick="showReport(3)" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 drucken</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  </div>
+
+  <!-- BOTTOM SHEET Eingabewerte 15% -->
+
+  <div id="sheet-inp15" class="bottom-sheet">
+    <div class="sheet-backdrop" onclick="closeSheet('sheet-inp15')"></div>
+    <div class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Eingabewerte 15%</div>
+      <div id="ac-inp" style="padding:0.5rem 0;"></div>
+      <button class="btn bp" style="width:100%;margin-top:1rem;" onclick="closeSheet('sheet-inp15')">✓ Schliessen</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM SHEET Kennzahlen 15% -->
+
+  <div id="sheet-kz15" class="bottom-sheet">
+    <div class="sheet-backdrop" onclick="closeSheet('sheet-kz15')"></div>
+    <div class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Berechnete Kennzahlen 15%</div>
+      <div id="ac-kz15" style="padding:0.5rem 0;"></div>
+      <button class="btn bp" style="width:100%;margin-top:1rem;" onclick="closeSheet('sheet-kz15')">✓ Schliessen</button>
+    </div>
+  </div>
+
+  <div id="b-pak15" class="hidden">
+    <div class="section-wrap">
+      <div class="pak-free">
+        <div class="pak-label">PAK15 nach Annealing in Ordnung?</div>
+        <div class="br" style="flex-wrap:nowrap;">
+          <button class="btn bok" style="flex:1;" onclick="pak15(true, this)">✓ PAK15 i.O.</button>
+          <button class="btn bnok" style="flex:1;" onclick="pak15(false, this)">✗ PAK15 n.i.O.</button>
+        </div>
+        <div id="pak15-nok" class="hidden">
+          <div class="nok-box" style="margin-top:1rem;">
+            <div style="margin-bottom:1rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--anti);">⚠ PAK15 n.i.O. — U und V eingeben:</div>
+            <div class="ig" style="margin-bottom:0.8rem;">
+              <div class="iif"><label><span class="v">U</span> — PAK15 Sense [%]</label><input type="number" id="U_nok" placeholder="0,000" step="0.001" class="input-sense"></div>
+              <div class="iif"><label><span class="v">V</span> — PAK15 Anti-Sense [%]</label><input type="number" id="V_nok" placeholder="0,000" step="0.001" class="input-anti"></div>
+            </div>
+            <div class="br" style="margin-bottom:1rem;">
+              <button class="btn bp" onclick="confirmUVnok15()">✓ Bestätigen</button>
+            </div>
+            <!-- Auto Überschuss Badge + Buttons (versteckt bis Bestätigung) -->
+            <div id="uberschuss15-result" class="hidden">
+              <div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.6rem;letter-spacing:0.1em;text-transform:uppercase;">Überschuss Strang (berechnet)</div>
+              <div id="uberschuss15-badge" style="margin-bottom:1.2rem;min-height:2rem;">
+                <span id="uberschuss15-span"></span>
+              </div>
+              <div class="br" style="flex-wrap:nowrap;gap:0.6rem;">
+                <button id="btn-pak15nok-anti" class="btn bok" style="flex:1;min-height:52px;" onclick="pak15nok('anti')">● ANTI-SENSE</button>
+                <button id="btn-pak15nok-sense" class="btn bok" style="flex:1;min-height:52px;" onclick="pak15nok('sense')">● SENSE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAK15 n.i.O. Korrekturberechnung -->
+
+  <div id="b-pak15nok" class="hidden">
+    <div class="section-wrap">
+      <div class="card">
+        <div class="ct"><span class="dot"></span>Korrektur PAK15 n.i.O.</div>
+        <div id="r-pak15nok"></div>
+      <div class="ig" style="margin-top:1rem;">
+  <div class="iif">
+    <label>
+      <span id="lbl-w15ist" style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);">
+        Ist-Menge Zugabe [kg]
+      </span>
+    </label>
+    <input type="number" id="W15_ist" placeholder="0,000" step="0.001" class="input-neutral">
+  </div>
+</div>
+<div class="br"><button class="btn bp" onclick="confirmZugabe15()">✓ Bestätigen</button></div>
+</div>
+</div>
+</div>
+</div>
+  <!-- PAK15-2 nach Korrektur -->
+
+  <div id="b-rpak15-2" class="hidden">
+    <div class="section-wrap">
+      <div class="card">
+        <div class="ct"><span class="dot"></span>Resultat PAK15-2 (nach Korrektur)</div>
+        <div class="ig">
+          <div class="iif"><label><span class="v">U2</span> — PAK15-2 Sense [%]</label><input type="number" id="U2" placeholder="0,000" step="0.001" class="input-sense"></div>
+          <div class="iif"><label><span class="v">V2</span> — PAK15-2 Anti-Sense [%]</label><input type="number" id="V2" placeholder="0,000" step="0.001" class="input-anti"></div>
+        </div>
+        <div class="pak-free" style="padding-top:0.5rem;">
+          <div class="pak-label">PAK15-2 in Ordnung?</div>
+          <div class="br" style="flex-wrap:nowrap;gap:0.5rem;">
+            <button class="btn bok" style="flex:1;font-size:0.78rem;padding:0.5rem 0.4rem;min-height:48px;" onclick="pak15v2(true)">✓ PAK15-2 i.O.</button>
+            <button class="btn bnok" style="flex:1;font-size:0.78rem;padding:0.5rem 0.4rem;min-height:48px;" onclick="pak15v2(false)">✗ PAK15-2 n.i.O.</button>
+          </div>
+          <div id="pak15-2-nok" class="hidden">
+            <div class="nok-box nok-pulse" style="margin-top:0.8rem;">
+              ⚠ PAK15-2 n.i.O. — <strong>PA / PE/SPE informieren.</strong> Prozess stoppen.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultat PAK15 -->
+
+  <div id="b-rpak15" class="hidden">
+  <div class="section-wrap">
+    <div class="section-label">RESULTAT PAK15</div>
+    <div class="card">
+      <div class="ct"><span class="dot"></span>Resultat PAK15 EINGABE</div>
+      <div class="ig">
+          <div class="iif"><label><span class="v">U</span> — PAK15 Sense [%]</label><input type="number" id="U_io" placeholder="0,000" step="0.001" class="input-sense"></div>
+          <div class="iif"><label><span class="v">V</span> — PAK15 Anti-Sense [%]</label><input type="number" id="V_io" placeholder="0,000" step="0.001" class="input-anti"></div>
+        </div>
+        <div class="br"><button class="btn bp" onclick="confirmPak15Resultat()">✓ Bestätigen</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="b-done" class="hidden">
+    <div class="section-wrap">
+      <div class="pak-free">
+        <div class="success">✓ PAK15 i.O. — Annealing erfolgreich abgeschlossen.</div>
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem;">
+          <div id="dynamic-print-buttons" style="margin-top:1.8rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOLERANZ WARNDIALOG -->
+
+<div id="tol-dialog" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1.5rem;">
+  <div class="tol-dialog-box">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--anti),transparent);border-radius:16px 16px 0 0;"></div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--anti);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem;">⚠ Toleranz überschritten</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.8rem;">Differenz ausserhalb ±0,1 kg</div>
+    <div id="tol-dialog-msg" style="font-family:'Space Mono',monospace;font-size:0.72rem;color:#8aacc8;margin-bottom:1.2rem;line-height:1.6;"></div>
+    <!-- Pflichtkommentar -->
+    <div style="margin-bottom:1rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--anti);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">
+        ✎ Begründung <span style="color:var(--anti);">*</span> Pflichtfeld
+      </div>
+      <textarea id="tol-comment"
+        placeholder="Begründung für Abweichung eingeben..."
+        oninput="checkTolComment()"
+        style="width:100%;background:#0a1628;border:1px solid rgba(255,107,107,0.4);border-radius:8px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.75rem;padding:0.7rem;resize:none;height:80px;line-height:1.5;outline:none;transition:border-color 0.2s;box-sizing:border-box;"
+      ></textarea>
+      <div id="tol-comment-hint" style="font-family:'Space Mono',monospace;font-size:0.62rem;color:rgba(255,107,107,0.7);margin-top:0.3rem;">Mindestens 10 Zeichen erforderlich</div>
+    </div>
+    <div style="display:flex;gap:0.6rem;">
+      <button class="btn bnok" style="flex:1;font-size:0.78rem;padding:0.5rem 0.6rem;min-height:44px;white-space:nowrap;" onclick="tolDialogAbort()">✗ Abbrechen</button>
+      <button id="tol-continue-btn" class="btn" style="flex:1;font-size:0.78rem;padding:0.5rem 0.6rem;min-height:44px;white-space:nowrap;background:linear-gradient(135deg,#0a3d25,#0d5232);color:rgba(0,255,157,0.3);border:1px solid rgba(0,255,157,0.2);cursor:not-allowed;" onclick="tolDialogContinue()" disabled>→ Weiter</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION TIMEOUT DIALOG -->
+
+<div id="timeout-dialog" style="display:none;position:fixed;inset:0;z-index:999998;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;max-width:340px;width:100%;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),transparent);"></div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--accent2);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem;">⏱ Session Timeout</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem;">Noch eingeloggt bleiben?</div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem;line-height:1.5;">10 Minuten Inaktivität erkannt. Automatischer Logout in:</div>
+    <div style="font-family:'Space Mono',monospace;font-size:2.5rem;font-weight:700;color:var(--accent2);text-align:center;margin:1rem 0;" id="timeout-count">60</div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);text-align:center;margin-bottom:1.2rem;">Sekunden</div>
+    <div style="display:flex;gap:0.8rem;">
+      <button class="btn bnok" style="flex:1;" onclick="doLogout()">Ausloggen</button>
+      <button class="btn bok" style="flex:1;" onclick="stayLoggedIn()">Eingeloggt bleiben</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET BESTÄTIGUNGS-DIALOG -->
+
+<div id="reset-dialog" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:2px solid rgba(255,107,107,0.4);border-radius:16px;padding:2rem;max-width:340px;width:100%;position:relative;overflow:hidden;animation:reset-pulse 1.5s ease-in-out infinite;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--anti),transparent);"></div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--anti);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem;">⚠ Achtung</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem;">Prozess zurücksetzen?</div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.5;">Alle eingegebenen Werte und der aktuelle Prozessfortschritt werden unwiderruflich gelöscht.</div>
+    <div style="display:flex;gap:0.8rem;">
+      <button class="btn" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--muted);" onclick="closeResetDialog()">Abbrechen</button>
+      <button class="btn bnok" style="flex:1;" onclick="doReset()">↺ Zurücksetzen</button>
+    </div>
+  </div>
+</div>
+
+<!-- INFO DIALOG -->
+
+<div id="info-dialog" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;max-width:340px;width:100%;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),transparent);"></div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--accent2);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem;">⚠ Hinweis</div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.82rem;color:var(--text);margin-bottom:1.5rem;line-height:1.6;" id="info-dialog-msg"></div>
+    <button class="btn bp" style="width:100%;justify-content:center;" onclick="closeInfoDialog()">OK</button>
+  </div>
+</div>
+
+<div id="print-overlay">
+  <div class="ptoolbar">
+    <button class="pb" onclick="hideReport()">← Zurück</button>
+    <button class="pp" onclick="setTimeout(function(){window.print();},300)">Drucken / PDF</button>
+  </div>
+  <div id="print-content"></div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
