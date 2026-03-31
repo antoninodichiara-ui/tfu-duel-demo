@@ -153,7 +153,7 @@
       <div id="r-calc85"></div>
       <div style="margin-top:0.8rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
         <button class="btn bp" style="font-size:0.75rem;padding:0.45rem 1rem;" onclick="openSheet('sheet-kz85')">📊 Kennzahlen</button>
-        <button class="btn bp" onclick="showReport(1)" style="font-size:0.75rem;padding:0.45rem 1rem;">🖨 </button>
+        <button class="btn bp" onclick="showReport(1)" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 Eduktvorbereitung</button>
       </div>
     </div>
   </div>
@@ -169,7 +169,7 @@
       </div>
       <div class="br"><button class="btn bp" onclick="confirmOP()">✓ Bestätigen</button></div>
       <div id="b-pak85-seite2-print" class="hidden" style="margin-top:0.6rem;">
-        <button class="btn bp" onclick="showReport(2)" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 Einwaage 85%</button>
+        <button class="btn bp" onclick="showReport(2)" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 Einwaage Annealing 85%</button>
       </div>
     </div>
   </div>
@@ -262,6 +262,9 @@
           </div>
           <div id="pak85-2-nok" class="hidden"><div class="nok-box nok-pulse" style="margin-top:0.8rem;">⚠ PAK85-2 n.i.O. — Prozess stoppen und Vorgesetzten informieren.</div></div>
         </div>
+        <div id="b-print-pak85-2-resultat" class="hidden" style="margin-top:0.6rem;">
+          <button class="btn bp" onclick="printPAK85_2Resultat()" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 PAK85-2 Resultat</button>
+        </div>
       </div>
     </div>
   </div>
@@ -316,6 +319,9 @@
         <button class="btn bp" style="font-size:0.75rem;padding:0.45rem 1rem;" onclick="openSheet('sheet-inp15')">📋 Eingabewerte</button>
         <button class="btn bp" style="font-size:0.75rem;padding:0.45rem 1rem;" onclick="openSheet('sheet-kz15')">📊 Kennzahlen</button>
       </div>
+      <div id="b-print-pak85-resultat" class="hidden" style="margin-top:0.6rem;">
+        <button class="btn bp" onclick="printPAK85Resultat()" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 PAK85 Resultat</button>
+      </div>
     </div>
   </div>
 
@@ -330,7 +336,7 @@
       </div>
       <div class="br"><button class="btn bp" onclick="confirmSR()">✓ Bestätigen</button></div>
       <div id="b-ein15-print" class="hidden" style="margin-top:0.6rem;">
-        <button class="btn bp" onclick="showReport(3)" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 drucken</button>
+        <button class="btn bp" onclick="printLimStrang15()" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 Limitierender Strang & Sollmengen 15%</button>
       </div>
     </div>
   </div>
@@ -442,6 +448,9 @@
             </div>
           </div>
         </div>
+        <div id="b-print-pak15-2-resultat" class="hidden" style="margin-top:0.6rem;">
+          <button class="btn bp" onclick="printPAK15_2Resultat()" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 PAK15-2 Resultat</button>
+        </div>
       </div>
     </div>
   </div>
@@ -458,6 +467,9 @@
           <div class="iif"><label><span class="v">V</span> — PAK15 Anti-Sense [%]</label><input type="number" id="V_io" placeholder="0,000" step="0.001" class="input-anti"></div>
         </div>
         <div class="br"><button class="btn bp" onclick="confirmPak15Resultat()">✓ Bestätigen</button></div>
+        <div id="b-print-pak15-resultat" class="hidden" style="margin-top:0.6rem;">
+          <button class="btn bp" onclick="printPAK15Resultat()" style="font-size:0.78rem;padding:0.5rem 1.2rem;width:100%;">🖨 PAK15 Resultat</button>
+        </div>
       </div>
     </div>
   </div>
