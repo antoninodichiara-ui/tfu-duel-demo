@@ -435,7 +435,8 @@ function pak85(ok, btn) {
   // Alle nachgelagerten Blöcke immer schliessen
   ['b-pak85nok','b-rpak85-2','pak85-2-nok','b-rpak85-weiter',
    'b-group15','b-calc15-inner','b-ein15-inner',
-   'b-pak15','pak15-nok','b-pak15nok','b-rpak15-2','b-rpak15','b-done'].forEach(hideEl);
+   'b-pak15','pak15-nok','b-pak15nok','b-rpak15-2','b-rpak15','b-done',
+   'b-print-pak85-resultat','b-print-pak85-2-resultat','b-print-pak15-resultat','b-print-pak15-2-resultat'].forEach(hideEl);
   if (ok) {
     D.ts_pak85 = new Date();
     D.user_t3 = currentUser ? { id: currentUser.id, name: currentUser.name } : null;
@@ -625,7 +626,11 @@ function pak85v2(ok) {
   D.pak85_2 = ok ? 'i.O.' : 'n.i.O.';
   // Alle nachgelagerten Blöcke immer schliessen
   ['b-group15','b-calc15-inner','b-ein15-inner',
-   'b-pak15','pak15-nok','b-pak15nok','b-rpak15-2','b-rpak15','b-done'].forEach(hideEl);
+   'b-pak15','pak15-nok','b-pak15nok','b-rpak15-2','b-rpak15','b-done',
+   'b-print-pak85-resultat','b-print-pak15-resultat','b-print-pak15-2-resultat'].forEach(hideEl);
+  // PAK85-2 Drucken-Button anzeigen (Ende PAK85-2 Abschnitt)
+  var bp852 = document.getElementById('b-print-pak85-2-resultat');
+  if (bp852) bp852.classList.remove('hidden');
   if (ok) {
     hideEl('pak85-2-nok');
     hideEl('b-rpak85');
@@ -709,6 +714,9 @@ function calcStep2() {
   }
   document.getElementById('r-calc15').innerHTML = r15 + '</div>';
   showEl('b-calc15'); showEl('b-ein15');
+  // PAK85 Resultat Drucken-Button anzeigen (Ende PAK85 Abschnitt)
+  var bp85r = document.getElementById('b-print-pak85-resultat');
+  if (bp85r) bp85r.classList.remove('hidden');
   if (!document.getElementById('si2').classList.contains('done')) stepDone(2);
   goTo('b-calc15');
 }
@@ -758,7 +766,8 @@ function confirmSRexec(S, R, diff15AS, diff15S) {
 function pak15(ok, btn) {
   D.pak15 = ok ? 'i.O.' : 'n.i.O.';
   // Alle nachgelagerten Blöcke immer schliessen
-  ['b-pak15nok','b-rpak15-2','b-rpak15','b-done'].forEach(hideEl);
+  ['b-pak15nok','b-rpak15-2','b-rpak15','b-done',
+   'b-print-pak15-resultat','b-print-pak15-2-resultat'].forEach(hideEl);
   if (ok) {
     hideEl('pak15-nok');
     // n.i.O. Felder leeren
@@ -891,6 +900,9 @@ function confirmPak15Resultat() {
   D.ts_end = new Date();
   D.ts_pak15 = new Date();
   D.user_t4 = currentUser ? { id: currentUser.id, name: currentUser.name } : null;
+  // PAK15 Resultat Drucken-Button anzeigen (Ende PAK15 Abschnitt)
+  var bp15r = document.getElementById('b-print-pak15-resultat');
+  if (bp15r) bp15r.classList.remove('hidden');
   showEl('b-done');
   if (!document.getElementById('si3').classList.contains('done')) stepDone(3);
   if (!document.getElementById('si4').classList.contains('done')) stepDone(4);
@@ -904,6 +916,10 @@ function pak15v2(ok) {
   D.pak15_V2 = parseVal('V2') || null;
   // Nachgelagerte Blöcke immer schliessen
   hideEl('b-done');
+  hideEl('b-print-pak15-resultat');
+  // PAK15-2 Drucken-Button anzeigen (Ende PAK15-2 Abschnitt)
+  var bp152 = document.getElementById('b-print-pak15-2-resultat');
+  if (bp152) bp152.classList.remove('hidden');
   if (ok) {
     hideEl('pak15-2-nok');
     hideEl('b-rpak15');
@@ -1231,6 +1247,121 @@ function buildReportPak15_2_NOK() {
 }
 function buildReportHTML() { return buildReport4(); }
 
+// ── NEUE REPORT BUILDER FÜR INLINE-DRUCKEN-BUTTONS ──────────────────
+
+function buildReportPAK85Resultat() {
+  var d = D;
+  var p85 = d.pak85 === 'i.O.' ? '<span class="rpb ok">i.O.</span>' : '<span class="rpb nok">n.i.O.</span>';
+  var html = pageHeader('', 'PAK85 Resultat')
+    + '<h2>1. PAK85 Ergebnis</h2>'
+    + '<table><tr><th>Parameter</th><th>Wert</th></tr>'
+    + '<tr><td>PAK85 Ergebnis</td><td>' + p85 + '</td></tr>'
+    + '<tr><td>E — PAK85 Sense [%]</td><td class="pval">' + fmtN(d.E, 4) + ' %</td></tr>'
+    + '<tr><td>D — PAK85 Anti-Sense [%]</td><td class="pval">' + fmtN(d.Dv, 4) + ' %</td></tr>'
+    + '<tr><td>KA — Korrekturfaktor</td><td class="pval">' + fmtN(d.KA, 4) + '</td></tr>'
+    + '<tr><td>MR3 — Korrigierter MR</td><td class="pval">' + fmtN(d.MR3, 4) + '</td></tr>'
+    + '</table>';
+  if (d.pak85 === 'n.i.O.') {
+    html += '<h2>2. PAK85 n.i.O. — Korrektur</h2>'
+      + '<table><tr><th>Parameter</th><th>Wert</th></tr>'
+      + '<tr><td>Überschuss Strang</td><td>' + (d.pak85_uberschuss === 'anti' ? 'ANTI-SENSE' : 'SENSE') + '</td></tr>'
+      + '<tr><td>' + (d.pak85nok_label || 'Korrekturwert') + '</td><td class="pval">' + fmtN(d.pak85nok_wert) + ' kg</td></tr>'
+      + '<tr><td>Ist-Menge Zugabe</td><td class="pval">' + fmtN(d.Z_ist) + ' kg</td></tr>'
+      + '<tr><td>PAK85-2 Ergebnis</td><td>' + (d.pak85_2 === 'i.O.' ? '<span class="rpb ok">i.O.</span>' : '<span class="rpb nok">n.i.O.</span>') + '</td></tr>'
+      + '</table>';
+  }
+  var visumNr = d.pak85 === 'n.i.O.' ? '3' : '2';
+  html += '<h2>' + visumNr + '. Visum PAK85</h2>'
+    + '<div class="rs">Zeitstempel: <b>' + fmtTS(d.ts_pak85) + '</b> &nbsp;|&nbsp; User ID: <b>' + fmtUser(d.user_t3) + '</b></div>'
+    + sigBlock('Operator PAK85', d.user_t3)
+    + abweichungBlock()
+    + '<div class="pfooter"><span>PAK85 Resultat</span><span>v3.1 | by A.Di Chiara</span></div>';
+  return html;
+}
+
+function buildReportPAK85_2Resultat() {
+  var d = D;
+  var p85_2 = d.pak85_2 === 'i.O.' ? '<span class="rpb ok">i.O.</span>' : '<span class="rpb nok">n.i.O.</span>';
+  var html = pageHeader('', 'PAK85-2 Resultat')
+    + '<h2>1. PAK85-2 Ergebnis (nach Korrektur)</h2>'
+    + '<table><tr><th>Parameter</th><th>Wert</th></tr>'
+    + '<tr><td>PAK85 Ergebnis (1. Prüfung)</td><td><span class="rpb nok">n.i.O.</span></td></tr>'
+    + '<tr><td>Überschuss Strang</td><td>' + (d.pak85_uberschuss === 'anti' ? 'ANTI-SENSE' : 'SENSE') + '</td></tr>'
+    + '<tr><td>' + (d.pak85nok_label || 'Korrekturwert') + '</td><td class="pval">' + fmtN(d.pak85nok_wert) + ' kg</td></tr>'
+    + '<tr><td>Ist-Menge Zugabe</td><td class="pval">' + fmtN(d.Z_ist) + ' kg</td></tr>'
+    + '<tr><td>PAK85-2 Ergebnis</td><td>' + p85_2 + '</td></tr>'
+    + '</table>';
+  if (d.pak85_2 === 'n.i.O.') {
+    html += '<div class="nok-box" style="margin:1rem 0;padding:0.8rem;border:2px solid #c0392b;border-radius:8px;color:#c0392b;font-weight:bold;">⚠ PAK85-2 n.i.O. — Prozess stoppen und Vorgesetzten informieren.</div>';
+  }
+  html += '<h2>2. Visum PAK85-2</h2>'
+    + sigBlock('Operator PAK85-2', d.user_t3)
+    + '<div class="pfooter"><span>PAK85-2 Resultat</span><span>v3.1 | by A.Di Chiara</span></div>';
+  return html;
+}
+
+function buildReportPAK15_2Resultat() {
+  var d = D;
+  var p15_2 = d.pak15_2 === 'i.O.' ? '<span class="rpb ok">i.O.</span>' : '<span class="rpb nok">n.i.O.</span>';
+  var html = pageHeader('', 'PAK15-2 Resultat')
+    + '<h2>1. PAK15-2 Ergebnis (nach Korrektur)</h2>'
+    + '<table><tr><th>Parameter</th><th>Wert</th></tr>'
+    + '<tr><td>PAK15 Ergebnis (1. Prüfung)</td><td><span class="rpb nok">n.i.O.</span></td></tr>'
+    + '<tr><td>Überschuss Strang</td><td>' + (d.pak15_uberschuss === 'anti' ? 'ANTI-SENSE' : 'SENSE') + '</td></tr>'
+    + '<tr><td>' + (d.pak15nok_label || 'Korrekturwert') + '</td><td class="pval">' + fmtN(d.pak15nok_wert) + ' kg</td></tr>'
+    + '<tr><td>Ist-Menge Zugabe</td><td class="pval">' + fmtN(d.W15_ist) + ' kg</td></tr>'
+    + '<tr><td>PAK15-2 Ergebnis</td><td>' + p15_2 + '</td></tr>';
+  if (d.pak15_U2 !== null && d.pak15_U2 !== undefined) {
+    html += '<tr><td>U2 — PAK15-2 Sense [%]</td><td class="pval">' + fmtN(d.pak15_U2, 4) + ' %</td></tr>';
+  }
+  if (d.pak15_V2 !== null && d.pak15_V2 !== undefined) {
+    html += '<tr><td>V2 — PAK15-2 Anti-Sense [%]</td><td class="pval">' + fmtN(d.pak15_V2, 4) + ' %</td></tr>';
+  }
+  html += '</table>';
+  if (d.pak15_2 === 'n.i.O.') {
+    html += '<div class="nok-box" style="margin:1rem 0;padding:0.8rem;border:2px solid #c0392b;border-radius:8px;color:#c0392b;font-weight:bold;">⚠ PAK15-2 n.i.O. — PA / PE/SPE informieren. Prozess stoppen.</div>';
+  }
+  html += '<h2>2. Visum PAK15-2</h2>'
+    + sigBlock('Operator PAK15-2', d.user_t4)
+    + '<div class="pfooter"><span>PAK15-2 Resultat</span><span>v3.1 | by A.Di Chiara</span></div>';
+  return html;
+}
+
+// ── INLINE PRINT HANDLER FUNKTIONEN ──────────────────────────────────
+
+function printPAK85Resultat() {
+  if (!D || !D.ts_start) { showInfo('Keine Daten vorhanden.'); return; }
+  var pages = [9];
+  if (D.pak85 === 'n.i.O.') pages.push(5);
+  showReportPages(pages);
+}
+
+function printPAK85_2Resultat() {
+  if (!D || !D.ts_start) { showInfo('Keine Daten vorhanden.'); return; }
+  var pages = [10];
+  if (D.pak85_2 === 'n.i.O.') pages.push(6);
+  showReportPages(pages);
+}
+
+function printLimStrang15() {
+  if (!D || !D.ts_start) { showInfo('Keine Daten vorhanden.'); return; }
+  showReportPages([3]);
+}
+
+function printPAK15Resultat() {
+  if (!D || !D.ts_start) { showInfo('Keine Daten vorhanden.'); return; }
+  var pages = [4];
+  if (D.pak15 === 'n.i.O.') pages.push(7);
+  showReportPages(pages);
+}
+
+function printPAK15_2Resultat() {
+  if (!D || !D.ts_start) { showInfo('Keine Daten vorhanden.'); return; }
+  var pages = [11];
+  if (D.pak15_2 === 'n.i.O.') pages.push(8);
+  showReportPages(pages);
+}
+
 function showReport(teil) {
   if (!D || !D.ts_start) {
     showInfo('Keine Daten vorhanden. Bitte zuerst Schritt 1 ausfüllen.');
@@ -1309,7 +1440,7 @@ function resetAll() {
     var el = document.getElementById(ids[i]);
     if (el) { el.value = ''; el.style.borderColor = ''; }
   }
-  var blocks = ['b-group85','b-calc85-inner','b-ein85-inner','b-pak85','b-pak85nok','b-rpak85-2','b-rpak85','b-rpak85-weiter','b-group15','b-calc15-inner','b-ein15-inner','b-pak15','b-pak15nok','b-rpak15-2','b-rpak15','b-done','b-pak85-seite2-print','b-ein15-print'];
+  var blocks = ['b-group85','b-calc85-inner','b-ein85-inner','b-pak85','b-pak85nok','b-rpak85-2','b-rpak85','b-rpak85-weiter','b-group15','b-calc15-inner','b-ein15-inner','b-pak15','b-pak15nok','b-rpak15-2','b-rpak15','b-done','b-pak85-seite2-print','b-ein15-print','b-print-pak85-resultat','b-print-pak85-2-resultat','b-print-pak15-resultat','b-print-pak15-2-resultat'];
   for (var j = 0; j < blocks.length; j++) { hideEl(blocks[j]); }
   hideEl('pak85-nok'); hideEl('pak85-2-nok'); hideEl('pak15-nok'); hideEl('pak15-2-nok');
   hideEl('uberschuss85-result'); hideEl('uberschuss15-result');
@@ -1749,6 +1880,9 @@ pages.forEach(function(pageNo, idx) {
   if (pageNo === 6) pageHtml = buildReportPak85_2_NOK();
   if (pageNo === 7) pageHtml = buildReportPak15NOK();
   if (pageNo === 8) pageHtml = buildReportPak15_2_NOK();
+  if (pageNo === 9) pageHtml = buildReportPAK85Resultat();
+  if (pageNo === 10) pageHtml = buildReportPAK85_2Resultat();
+  if (pageNo === 11) pageHtml = buildReportPAK15_2Resultat();
 
   if (!pageHtml) return;
 
