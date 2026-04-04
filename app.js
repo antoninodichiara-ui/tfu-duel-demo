@@ -1,8 +1,8 @@
-const STORAGE_KEY = "tfu-duel-v4-local";
+const STORAGE_KEY = "tfu-duel-v6-local";
 const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
 
 const state = {
-  menuOpen: true,
+  menuOpen: false,
   deckSize: 8,
   deck: [],
   currentIndex: 0,
@@ -156,7 +156,7 @@ function getStatusText() {
   }
 
   if (!state.selectedStat) {
-    return "Pick one stat on your current card, compare it in real life, then confirm Win, Lose or Draw.";
+    return "Pick one stat, compare it in real life, then confirm Win, Lose or Draw.";
   }
 
   if (!state.roundResolved) {
@@ -248,13 +248,58 @@ function nextCard() {
   render();
 }
 
-function render() {
-  appView.innerHTML = buildApp();
-  bindApp();
+function buildMenuOverlay() {
+  const allowedSizes = [4, 6, 8, 10, 12].filter((size) => size <= CARD_POOL.length);
+
+  if (!state.menuOpen) return "";
+
+  return `
+    <div class="menu-overlay">
+      <section class="menu-panel">
+        <div class="menu-panel-header">
+          <div>
+            <p class="section-eyebrow">TFU Duel Menu</p>
+            <h2 class="setup-title">Quick Match Setup</h2>
+          </div>
+          <button id="closeMenuBtn" class="menu-close-btn" type="button">✕</button>
+        </div>
+
+        <p class="setup-copy">
+          Local duel mode. One device per player. Pick a stat, compare it in real life, then record the result.
+        </p>
+
+        <div class="field-group">
+          <label for="deckSizeSelect" class="field-label">Deck Size</label>
+          <select id="deckSizeSelect" class="field-control">
+            ${allowedSizes
+              .map(
+                (size) =>
+                  `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} Cards</option>`
+              )
+              .join("")}
+          </select>
+        </div>
+
+        <div class="setup-actions">
+          <button id="startMatchBtn" class="btn btn-primary" type="button">Start Match</button>
+          <button id="menuNewMatchBtn" class="btn btn-secondary" type="button">New Match</button>
+          <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
+        </div>
+
+        <div class="mini-card-pool">
+          <p class="panel-label">Card Pool</p>
+          <div class="mini-card-pool-grid">
+            ${CARD_POOL.map(
+              (c) => `<div class="mini-card-pill">${escapeHtml(c.name)}</div>`
+            ).join("")}
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function buildApp() {
-  const allowedSizes = [4, 6, 8, 10, 12].filter((size) => size <= CARD_POOL.length);
   const card = getCurrentCard();
   const totalCards = state.deck.length;
   const roundNumber = state.finished
@@ -271,62 +316,15 @@ function buildApp() {
 
   return `
     <section class="screen">
-      <div class="floating-menu-bar">
-        <button id="menuToggleBtn" class="menu-toggle-btn" type="button">
-          ☰ Menu
-        </button>
-      </div>
+      ${buildMenuOverlay()}
 
-      ${state.menuOpen ? `
-        <div id="menuOverlay" class="menu-overlay">
-          <section class="menu-panel">
-            <div class="menu-panel-header">
-              <div>
-                <p class="section-eyebrow">TFU Duel Menu</p>
-                <h2 class="setup-title">Quick Match Setup</h2>
-              </div>
-              <button id="closeMenuBtn" class="menu-close-btn" type="button">✕</button>
-            </div>
+      <section class="micro-topbar">
+        <button id="menuToggleBtn" class="micro-btn" type="button">☰ Menu</button>
+        <div class="micro-title">TFU Duel</div>
+        <button id="quickNewMatchBtn" class="micro-btn alt" type="button">New</button>
+      </section>
 
-            <p class="setup-copy">
-              Local duel mode. Each player uses their own device, reveals one card, picks one stat, compares it in real life, then records Win, Lose or Draw.
-            </p>
-
-            <div class="config-grid">
-              <div class="field-group">
-                <label for="deckSizeSelect" class="field-label">Deck Size</label>
-                <select id="deckSizeSelect" class="field-control">
-                  ${allowedSizes
-                    .map(
-                      (size) =>
-                        `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} Cards</option>`
-                    )
-                    .join("")}
-                </select>
-              </div>
-            </div>
-
-            <div class="setup-actions">
-              <button id="startMatchBtn" class="btn btn-primary" type="button">Start Match</button>
-              <button id="newLocalMatchBtn" class="btn btn-secondary" type="button">New Match</button>
-              <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
-            </div>
-
-            <div class="mini-card-pool">
-              <p class="panel-label">Card Pool</p>
-              <div class="mini-card-pool-grid">
-                ${CARD_POOL.map(
-                  (c) => `
-                    <div class="mini-card-pill">${escapeHtml(c.name)}</div>
-                  `
-                ).join("")}
-              </div>
-            </div>
-          </section>
-        </div>
-      ` : ""}
-
-      <section class="hud-grid compact-hud">
+      <section class="hud-grid micro-hud">
         <article class="hud-card">
           <span class="hud-label">Round</span>
           <strong>${roundNumber} / ${totalCards || state.deckSize}</strong>
@@ -340,7 +338,7 @@ function buildApp() {
         <article class="hud-card">
           <span class="hud-label">Score</span>
           <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
-          <small>Win / Lose / Draw</small>
+          <small>W / L / D</small>
         </article>
 
         <article class="hud-card">
@@ -354,15 +352,15 @@ function buildApp() {
           ? `
             <div class="game-grid">
               <section class="duel-card premium-card">
-                <div class="card-inner-v3 card-inner-compact">
-                  <div class="card-topline compact-topline">
-                    <div class="compact-title-wrap">
-                      <h2 class="card-name-v3 compact-name">${escapeHtml(card.name)}</h2>
-                      <p class="card-subtitle-v3 compact-subtitle">${escapeHtml(card.title)}</p>
+                <div class="card-inner-v3 ultra-compact-card">
+                  <div class="ultra-topline">
+                    <div class="ultra-title-wrap">
+                      <h2 class="card-name-v3 ultra-name">${escapeHtml(card.name)}</h2>
+                      <p class="card-subtitle-v3 ultra-subtitle">${escapeHtml(card.title)}</p>
                     </div>
 
-                    <div class="compact-right-meta">
-                      <div class="power-pill compact-power">
+                    <div class="ultra-meta-right">
+                      <div class="power-pill mini-power">
                         <span>Power</span>
                         <strong>${card.power}</strong>
                       </div>
@@ -370,12 +368,12 @@ function buildApp() {
                     </div>
                   </div>
 
-                  <div class="card-image-frame image-priority-frame">
-                    <img class="card-image-v3 image-priority" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
+                  <div class="card-image-frame ultra-image-frame">
+                    <img class="card-image-v3 ultra-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
                     <div class="card-role-badge">${escapeHtml(card.type)}</div>
                   </div>
 
-                  <div class="card-meta-grid-v3 compact-meta-grid">
+                  <div class="mini-meta-row">
                     <div class="meta-box">
                       <span class="meta-label">Role</span>
                       <span class="meta-value">${escapeHtml(card.type)}</span>
@@ -464,7 +462,6 @@ function buildApp() {
                 <p class="section-eyebrow">Match Complete</p>
                 <h2 class="endscreen-title">All Cards Played</h2>
                 <div class="endscreen-score">${state.score.wins} / ${state.score.losses} / ${state.score.draws}</div>
-                <p class="endscreen-copy">Start a new match from the menu for a fresh local shuffle.</p>
               </div>
             </section>
           `
@@ -477,11 +474,12 @@ function buildApp() {
 function bindApp() {
   document.getElementById("menuToggleBtn")?.addEventListener("click", () => toggleMenu());
   document.getElementById("closeMenuBtn")?.addEventListener("click", () => toggleMenu(false));
+  document.getElementById("quickNewMatchBtn")?.addEventListener("click", () => createNewMatch(true));
+  document.getElementById("menuNewMatchBtn")?.addEventListener("click", () => createNewMatch(true));
   document.getElementById("deckSizeSelect")?.addEventListener("change", (event) => {
     selectDeckSize(event.target.value);
   });
   document.getElementById("startMatchBtn")?.addEventListener("click", () => createNewMatch(true));
-  document.getElementById("newLocalMatchBtn")?.addEventListener("click", () => createNewMatch(true));
   document.getElementById("resetAllBtn")?.addEventListener("click", fullReset);
 
   document.querySelectorAll("[data-stat]").forEach((button) => {
@@ -510,6 +508,7 @@ goToSetupBtn.addEventListener("click", () => toggleMenu(true));
 newMatchBtn.addEventListener("click", () => createNewMatch(true));
 
 if (!loadState()) {
+  state.menuOpen = true;
   render();
 } else {
   render();
