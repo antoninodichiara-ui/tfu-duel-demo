@@ -1,4 +1,4 @@
-export const cards = [
+window.cards = [
   {
     id: 1,
     name: "Aethron",
@@ -6,14 +6,14 @@ export const cards = [
     type: "Hero",
     rarity: "Legendary",
     power: 107,
-    image: "/assets/cards/aethron.jpeg",
+    image: "assets/cards/aethron.jpeg",
     stats: {
       attack: 86,
       defense: 95,
       speed: 102,
       intelligence: 107,
-      energy: 100,
-    },
+      energy: 100
+    }
   },
   {
     id: 2,
@@ -22,14 +22,14 @@ export const cards = [
     type: "Villain",
     rarity: "Legendary",
     power: 109,
-    image: "/assets/cards/dissona.jpeg",
+    image: "assets/cards/dissona.jpeg",
     stats: {
       attack: 78,
       defense: 84,
       speed: 96,
       intelligence: 103,
-      energy: 109,
-    },
+      energy: 109
+    }
   },
   {
     id: 3,
@@ -38,14 +38,14 @@ export const cards = [
     type: "Hero",
     rarity: "Legendary",
     power: 104,
-    image: "/assets/cards/elyndra.jpeg",
+    image: "assets/cards/elyndra.jpeg",
     stats: {
       attack: 86,
       defense: 104,
       speed: 80,
       intelligence: 94,
-      energy: 98,
-    },
+      energy: 98
+    }
   },
   {
     id: 4,
@@ -54,14 +54,14 @@ export const cards = [
     type: "Hero",
     rarity: "Apex",
     power: 106,
-    image: "/assets/cards/kryon.jpeg",
+    image: "assets/cards/kryon.jpeg",
     stats: {
       attack: 93,
       defense: 88,
       speed: 101,
       intelligence: 107,
-      energy: 90,
-    },
+      energy: 90
+    }
   },
   {
     id: 5,
@@ -70,14 +70,14 @@ export const cards = [
     type: "Villain",
     rarity: "Apex",
     power: 109,
-    image: "/assets/cards/malgrave.jpeg",
+    image: "assets/cards/malgrave.jpeg",
     stats: {
       attack: 92,
       defense: 109,
       speed: 72,
       intelligence: 90,
-      energy: 104,
-    },
+      energy: 104
+    }
   },
   {
     id: 6,
@@ -86,14 +86,14 @@ export const cards = [
     type: "Villain",
     rarity: "Apex",
     power: 108,
-    image: "/assets/cards/nyxara.jpeg",
+    image: "assets/cards/nyxara.jpeg",
     stats: {
       attack: 93,
       defense: 89,
       speed: 95,
       intelligence: 108,
-      energy: 102,
-    },
+      energy: 102
+    }
   },
   {
     id: 7,
@@ -102,14 +102,14 @@ export const cards = [
     type: "Hero",
     rarity: "Apex",
     power: 105,
-    image: "/assets/cards/rakthar.jpeg",
+    image: "assets/cards/rakthar.jpeg",
     stats: {
       attack: 99,
       defense: 94,
       speed: 87,
       intelligence: 76,
-      energy: 82,
-    },
+      energy: 82
+    }
   },
   {
     id: 8,
@@ -118,14 +118,14 @@ export const cards = [
     type: "Hero",
     rarity: "Mythic",
     power: 106,
-    image: "/assets/cards/seraphyx.jpeg",
+    image: "assets/cards/seraphyx.jpeg",
     stats: {
       attack: 106,
       defense: 96,
       speed: 91,
       intelligence: 88,
-      energy: 104,
-    },
+      energy: 104
+    }
   },
   {
     id: 9,
@@ -134,14 +134,14 @@ export const cards = [
     type: "Villain",
     rarity: "Titan",
     power: 108,
-    image: "/assets/cards/thalvor.jpeg",
+    image: "assets/cards/thalvor.jpeg",
     stats: {
       attack: 96,
       defense: 101,
       speed: 70,
       intelligence: 89,
-      energy: 104,
-    },
+      energy: 104
+    }
   },
   {
     id: 10,
@@ -150,14 +150,14 @@ export const cards = [
     type: "Villain",
     rarity: "Apex",
     power: 105,
-    image: "/assets/cards/velkaris.jpeg",
+    image: "assets/cards/velkaris.jpeg",
     stats: {
       attack: 99,
       defense: 82,
       speed: 105,
       intelligence: 87,
-      energy: 91,
-    },
+      energy: 91
+    }
   },
   {
     id: 11,
@@ -166,14 +166,14 @@ export const cards = [
     type: "Villain",
     rarity: "Titan",
     power: 106,
-    image: "/assets/cards/voraxis.jpeg",
+    image: "assets/cards/voraxis.jpeg",
     stats: {
       attack: 100,
       defense: 92,
       speed: 68,
       intelligence: 95,
-      energy: 104,
-    },
+      energy: 104
+    }
   },
   {
     id: 12,
@@ -182,13 +182,13 @@ export const cards = [
     type: "Villain",
     rarity: "Legendary",
     power: 112,
-    image: "/assets/cards/xekroth.jpeg",
+    image: "assets/cards/xekroth.jpeg",
     stats: {
       attack: 93,
       defense: 97,
       speed: 74,
       intelligence: 101,
-      energy: 109,
-    },
-  },
+      energy: 109
+    }
+  }
 ];
