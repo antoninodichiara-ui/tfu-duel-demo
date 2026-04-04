@@ -1,182 +1,272 @@
 window.TFU_CARDS = [
   {
-    id: "solara-vex",
-    name: "Solara Vex",
-    title: "The Dawn Tyrant",
-    role: "Hero",
-    faction: "Solaris Order",
-    style: "Celestial Flame",
-    image: "",
-    flavor: "Sie schlägt nicht schnell zu. Sie löscht Schlachtfelder aus.",
+    id: "xekroth",
+    name: "Xekroth",
+    title: "The Biophage",
+    role: "Villain",
+    faction: "Entropy Swarm",
+    style: "Bio-Entropy Corruption",
+    rarity: "Legendary",
+    power: 112,
+    image: "assets/cards/xekroth.jpg",
+    flavor: "Order is a temporary delusion. Mutate or be consumed.",
+    abilities: {
+      core: "Viral Mutation",
+      skill1: "Biophage Pulse",
+      skill1Value: 93,
+      skill2: "Entropy's Hand",
+      skill2Value: 109
+    },
     stats: {
-      "Arcane Blast": 86,
-      "Solar Dominion": 94,
-      "Resonance Sync": 71,
-      "Defense Matrix": 78,
-      "Speed Surge": 69,
-      "Mystic Force": 91
+      Power: 95,
+      Speed: 68,
+      Control: 94,
+      Damage: 97,
+      Defense: 82,
+      "Mystic Force": 98
     }
   },
   {
-    id: "nyr-vale",
-    name: "Nyr Vale",
-    title: "The Silent Rift",
-    role: "Villain",
-    faction: "Voidborne",
-    style: "Entropy Control",
-    image: "",
-    flavor: "Wo er auftaucht, zerfällt Ordnung zu Stille.",
+    id: "elyndra",
+    name: "Elyndra",
+    title: "The Lifeforge",
+    role: "Hero",
+    faction: "Radiant Genesis",
+    style: "Bioforce Restoration",
+    rarity: "Legendary",
+    power: 104,
+    image: "assets/cards/elyndra.jpg",
+    flavor: "Where others see the end, she begins again.",
+    abilities: {
+      core: "Vital Weave",
+      skill1: "Lifeforge Pulse",
+      skill1Value: 86,
+      skill2: "Celestial Rebirth",
+      skill2Value: 98
+    },
     stats: {
-      "Arcane Blast": 79,
-      "Void Collapse": 95,
-      "Resonance Sync": 83,
-      "Defense Matrix": 72,
-      "Speed Surge": 74,
+      Power: 78,
+      Speed: 72,
+      Control: 96,
+      Damage: 70,
+      Defense: 94,
       "Mystic Force": 93
     }
   },
   {
-    id: "lyra-bloom",
-    name: "Lyra Bloom",
-    title: "Heart of Verdancy",
-    role: "Hero",
-    faction: "Bloom Covenant",
-    style: "Nature Resonance",
-    image: "",
-    flavor: "Sanft im Ton. Brutal in der Kontrolle.",
-    stats: {
-      "Bloom Pulse": 82,
-      "Solar Dominion": 66,
-      "Resonance Sync": 92,
-      "Defense Matrix": 84,
-      "Speed Surge": 70,
-      "Mystic Force": 80
-    }
-  },
-  {
-    id: "kael-drax",
-    name: "Kael Drax",
-    title: "Iron Warlord",
+    id: "voraxis",
+    name: "Voraxis",
+    title: "The Chaos Splinter",
     role: "Villain",
-    faction: "Crimson Forge",
-    style: "Siege Power",
-    image: "",
-    flavor: "Kein Stratege. Eine Naturkatastrophe mit Panzerung.",
+    faction: "Rift Dominion",
+    style: "Chaotic Titan Force",
+    rarity: "Titan",
+    power: 106,
+    image: "assets/cards/voraxis.jpg",
+    flavor: "I do not want to rule. I want everything shattered.",
+    abilities: {
+      core: "Splintered Reality",
+      skill1: "Chaos Claws",
+      skill1Value: 100,
+      skill2: "Fractured Abyss",
+      skill2Value: 104
+    },
     stats: {
-      "Arcane Blast": 61,
-      "War Crush": 96,
-      "Resonance Sync": 54,
-      "Defense Matrix": 93,
-      "Speed Surge": 52,
-      "Mystic Force": 58
-    }
-  },
-  {
-    id: "astra-nox",
-    name: "Astra Nox",
-    title: "Oracle of the Last Eclipse",
-    role: "Villain",
-    faction: "Night Halo",
-    style: "Astral Corruption",
-    image: "",
-    flavor: "Sie gewinnt Kämpfe lange bevor sie beginnen.",
-    stats: {
-      "Arcane Blast": 88,
-      "Void Collapse": 81,
-      "Resonance Sync": 90,
-      "Defense Matrix": 67,
-      "Speed Surge": 76,
-      "Mystic Force": 97
-    }
-  },
-  {
-    id: "torin-ash",
-    name: "Torin Ash",
-    title: "Blade of Emberfall",
-    role: "Hero",
-    faction: "Ashen Guard",
-    style: "Close Combat Burst",
-    image: "",
-    flavor: "Präzise genug für Duelle. Wild genug für Kriege.",
-    stats: {
-      "Arcane Blast": 68,
-      "Solar Dominion": 72,
-      "Resonance Sync": 63,
-      "Defense Matrix": 75,
-      "Speed Surge": 91,
-      "Mystic Force": 64
-    }
-  },
-  {
-    id: "selene-cryx",
-    name: "Selene Cryx",
-    title: "Mirror of Ruin",
-    role: "Villain",
-    faction: "Obsidian Court",
-    style: "Reflection Hex",
-    image: "",
-    flavor: "Wer sie liest, hat schon verloren.",
-    stats: {
-      "Arcane Blast": 84,
-      "Void Collapse": 77,
-      "Resonance Sync": 89,
-      "Defense Matrix": 73,
-      "Speed Surge": 80,
-      "Mystic Force": 88
-    }
-  },
-  {
-    id: "orion-kade",
-    name: "Orion Kade",
-    title: "Storm Vanguard",
-    role: "Hero",
-    faction: "Aether Legion",
-    style: "Tempest Assault",
-    image: "",
-    flavor: "Er spielt keine langen Matches. Er beendet sie.",
-    stats: {
-      "Arcane Blast": 81,
-      "Storm Pressure": 87,
-      "Resonance Sync": 72,
-      "Defense Matrix": 76,
-      "Speed Surge": 89,
-      "Mystic Force": 74
-    }
-  },
-  {
-    id: "vexa-morn",
-    name: "Vexa Morn",
-    title: "Crown of Static Night",
-    role: "Villain",
-    faction: "Null Choir",
-    style: "Shock Hex",
-    image: "",
-    flavor: "Sie zerstört keine Fronten. Sie zerstört Nerven.",
-    stats: {
-      "Arcane Blast": 77,
-      "Static Reign": 88,
-      "Resonance Sync": 85,
-      "Defense Matrix": 70,
-      "Speed Surge": 82,
+      Power: 99,
+      Speed: 61,
+      Control: 88,
+      Damage: 96,
+      Defense: 93,
       "Mystic Force": 90
     }
   },
   {
-    id: "draven-holt",
-    name: "Draven Holt",
-    title: "Breaker of Gates",
+    id: "aethron",
+    name: "Aethron",
+    title: "The Time Paradox",
     role: "Hero",
-    faction: "Iron Banner",
-    style: "Titan Pressure",
-    image: "",
-    flavor: "Subtilität ist für Leute ohne Durchschlagskraft.",
+    faction: "Chrono Order",
+    style: "Temporal Precision",
+    rarity: "Legendary",
+    power: 107,
+    image: "assets/cards/aethron.jpg",
+    flavor: "You don't lose to me. You already did.",
+    abilities: {
+      core: "Temporal Flight",
+      skill1: "Paradox Strike",
+      skill1Value: 86,
+      skill2: "Chrono Collapse",
+      skill2Value: 105
+    },
     stats: {
-      "Arcane Blast": 58,
-      "Titan Break": 97,
-      "Resonance Sync": 49,
-      "Defense Matrix": 91,
-      "Speed Surge": 57,
-      "Mystic Force": 60
+      Power: 82,
+      Speed: 95,
+      Control: 98,
+      Damage: 87,
+      Defense: 79,
+      "Mystic Force": 94
+    }
+  },
+  {
+    id: "dissona",
+    name: "Dissona",
+    title: "The Frequency Breaker",
+    role: "Villain",
+    faction: "Sonic Ruin",
+    style: "Resonance Collapse",
+    rarity: "Legendary",
+    power: 109,
+    image: "assets/cards/dissona.jpg",
+    flavor: "Everything has a frequency. She just finds the one that breaks you.",
+    abilities: {
+      core: "Resonance Lock",
+      skill1: "Sonic Pulse",
+      skill1Value: 78,
+      skill2: "Frequency Fracture",
+      skill2Value: 92
+    },
+    stats: {
+      Power: 79,
+      Speed: 89,
+      Control: 97,
+      Damage: 88,
+      Defense: 69,
+      "Mystic Force": 95
+    }
+  },
+  {
+    id: "thalvor",
+    name: "Thalvor",
+    title: "The Abyss Throne",
+    role: "Villain",
+    faction: "Deep Void Empire",
+    style: "Abyssal Dominion",
+    rarity: "Titan",
+    power: 108,
+    image: "assets/cards/thalvor.jpg",
+    flavor: "You are nothing beneath the abyss.",
+    abilities: {
+      core: "Abyssal Dominion",
+      skill1: "Abyssal Trident",
+      skill1Value: 96,
+      skill2: "Crushing Depths",
+      skill2Value: 104
+    },
+    stats: {
+      Power: 98,
+      Speed: 58,
+      Control: 90,
+      Damage: 95,
+      Defense: 97,
+      "Mystic Force": 89
+    }
+  },
+  {
+    id: "velkaris",
+    name: "Velkaris",
+    title: "The Night Cut",
+    role: "Villain",
+    faction: "Umbra Blades",
+    style: "Shadow Assassination",
+    rarity: "Apex",
+    power: 105,
+    image: "assets/cards/velkaris.jpg",
+    flavor: "You die before you even see me.",
+    abilities: {
+      core: "Shadowmeld",
+      skill1: "Void Blades",
+      skill1Value: 92,
+      skill2: "Dread Execution",
+      skill2Value: 99
+    },
+    stats: {
+      Power: 84,
+      Speed: 98,
+      Control: 83,
+      Damage: 96,
+      Defense: 70,
+      "Mystic Force": 82
+    }
+  },
+  {
+    id: "rakthar",
+    name: "Rakthar",
+    title: "The Warfang",
+    role: "Hero",
+    faction: "Primal Crown",
+    style: "Predator Assault",
+    rarity: "Apex",
+    power: 105,
+    image: "assets/cards/rakthar.jpg",
+    flavor: "He does not chase glory. He hunts victory.",
+    abilities: {
+      core: "Alpha Instinct",
+      skill1: "Warfang Spear",
+      skill1Value: 91,
+      skill2: "Savage Hunt",
+      skill2Value: 99
+    },
+    stats: {
+      Power: 97,
+      Speed: 87,
+      Control: 76,
+      Damage: 94,
+      Defense: 88,
+      "Mystic Force": 66
+    }
+  },
+  {
+    id: "kryon",
+    name: "Kryon",
+    title: "The Neural Strike",
+    role: "Hero",
+    faction: "Neural Vanguard",
+    style: "Tactical Techblade",
+    rarity: "Apex",
+    power: 106,
+    image: "assets/cards/kryon.jpg",
+    flavor: "I calculate your death before you even move.",
+    abilities: {
+      core: "Neural Tactician",
+      skill1: "Synaptic Blades",
+      skill1Value: 93,
+      skill2: "Combat Calculation",
+      skill2Value: 107
+    },
+    stats: {
+      Power: 86,
+      Speed: 94,
+      Control: 95,
+      Damage: 91,
+      Defense: 78,
+      "Mystic Force": 80
+    }
+  },
+  {
+    id: "nyxara",
+    name: "Nyxara",
+    title: "The Mind Veil",
+    role: "Villain",
+    faction: "Psion Eclipse",
+    style: "Illusion Dominion",
+    rarity: "Apex",
+    power: 108,
+    image: "assets/cards/nyxara.jpg",
+    flavor: "Your thoughts are mine to twist. Your reality is mine to break.",
+    abilities: {
+      core: "Psionic Dominion",
+      skill1: "Psychic Bonds",
+      skill1Value: 93,
+      skill2: "Illusion's Grasp",
+      skill2Value: 108
+    },
+    stats: {
+      Power: 81,
+      Speed: 84,
+      Control: 99,
+      Damage: 89,
+      Defense: 74,
+      "Mystic Force": 97
     }
   }
 ];
