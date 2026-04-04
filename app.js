@@ -1,8 +1,9 @@
-const STORAGE_KEY = "tfu-duel-v7-local";
+const STORAGE_KEY = "tfu-duel-v8-local";
 const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
 
 const state = {
-  menuOpen: true,
+  menuOpen: false,
+  imageOpen: false,
   deckSize: 8,
   deck: [],
   currentIndex: 0,
@@ -50,7 +51,8 @@ function loadState() {
   try {
     const parsed = JSON.parse(raw);
 
-    state.menuOpen = typeof parsed.menuOpen === "boolean" ? parsed.menuOpen : true;
+    state.menuOpen = typeof parsed.menuOpen === "boolean" ? parsed.menuOpen : false;
+    state.imageOpen = false;
     state.deckSize = Number(parsed.deckSize) || 8;
     state.deck = Array.isArray(parsed.deck) ? parsed.deck : [];
     state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
@@ -86,6 +88,16 @@ function toggleMenu(forceValue) {
   render();
 }
 
+function openImage() {
+  state.imageOpen = true;
+  render();
+}
+
+function closeImage() {
+  state.imageOpen = false;
+  render();
+}
+
 function resetScoreOnly() {
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.log.push("Score reset.");
@@ -95,6 +107,7 @@ function resetScoreOnly() {
 
 function fullReset() {
   state.menuOpen = true;
+  state.imageOpen = false;
   state.deckSize = 8;
   state.deck = [];
   state.currentIndex = 0;
@@ -117,7 +130,8 @@ function createNewMatch(keepScore) {
   state.roundResult = null;
   state.finished = false;
   state.menuOpen = false;
-  state.log = [`New match started. ${safeDeckSize} cards shuffled locally.`];
+  state.imageOpen = false;
+  state.log = ["New match started. " + safeDeckSize + " cards shuffled locally."];
 
   if (!keepScore) {
     state.score = { wins: 0, losses: 0, draws: 0 };
@@ -299,6 +313,19 @@ function buildMenuOverlay() {
   `;
 }
 
+function buildImageOverlay(card) {
+  if (!state.imageOpen || !card) return "";
+
+  return `
+    <div id="imageOverlay" class="image-overlay">
+      <div class="image-overlay-inner">
+        <button id="closeImageBtn" class="image-close-btn" type="button">✕</button>
+        <img class="fullscreen-card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
+      </div>
+    </div>
+  `;
+}
+
 function buildGameContent() {
   const card = getCurrentCard();
   const totalCards = state.deck.length;
@@ -357,10 +384,11 @@ function buildGameContent() {
             </div>
           </div>
 
-          <div class="card-image-frame ultra-image-frame">
+          <button id="openImageBtn" class="card-image-frame ultra-image-frame card-image-button" type="button">
             <img class="card-image-v3 ultra-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
             <div class="card-role-badge">${escapeHtml(card.type)}</div>
-          </div>
+            <div class="image-zoom-hint">Tap to expand</div>
+          </button>
 
           <div class="mini-meta-row">
             <div class="meta-box">
@@ -456,9 +484,12 @@ function buildGameContent() {
 }
 
 function buildApp() {
+  const card = getCurrentCard();
+
   return `
     <section class="screen">
       ${buildMenuOverlay()}
+      ${buildImageOverlay(card)}
 
       <section class="micro-topbar">
         <button id="menuToggleBtn" class="micro-btn" type="button">☰ Menu</button>
@@ -484,6 +515,9 @@ function bindApp() {
   const loseBtn = document.getElementById("loseBtn");
   const nextCardBtn = document.getElementById("nextCardBtn");
   const resetScoreBtn = document.getElementById("resetScoreBtn");
+  const openImageBtn = document.getElementById("openImageBtn");
+  const closeImageBtn = document.getElementById("closeImageBtn");
+  const imageOverlay = document.getElementById("imageOverlay");
 
   if (menuToggleBtn) menuToggleBtn.addEventListener("click", function () { toggleMenu(); });
   if (closeMenuBtn) closeMenuBtn.addEventListener("click", function () { toggleMenu(false); });
@@ -497,6 +531,16 @@ function bindApp() {
   if (loseBtn) loseBtn.addEventListener("click", function () { resolveRound("lose"); });
   if (nextCardBtn) nextCardBtn.addEventListener("click", nextCard);
   if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
+  if (openImageBtn) openImageBtn.addEventListener("click", openImage);
+  if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
+
+  if (imageOverlay) {
+    imageOverlay.addEventListener("click", function (event) {
+      if (event.target === imageOverlay) {
+        closeImage();
+      }
+    });
+  }
 
   const statButtons = document.querySelectorAll("[data-stat]");
   statButtons.forEach(function (button) {
