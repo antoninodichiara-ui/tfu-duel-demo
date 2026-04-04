@@ -1,8 +1,8 @@
-const STORAGE_KEY = "tfu-duel-v6-local";
+const STORAGE_KEY = "tfu-duel-v7-local";
 const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
 
 const state = {
-  menuOpen: false,
+  menuOpen: true,
   deckSize: 8,
   deck: [],
   currentIndex: 0,
@@ -27,14 +27,14 @@ const statLabels = {
 };
 
 const appView = document.getElementById("appView");
-const goToSetupBtn = document.getElementById("goToSetupBtn");
-const newMatchBtn = document.getElementById("newMatchBtn");
 
 function shuffle(array) {
-  const clone = [...array];
+  const clone = array.slice();
   for (let i = clone.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
-    [clone[i], clone[j]] = [clone[j], clone[i]];
+    const temp = clone[i];
+    clone[i] = clone[j];
+    clone[j] = temp;
   }
   return clone;
 }
@@ -50,7 +50,7 @@ function loadState() {
   try {
     const parsed = JSON.parse(raw);
 
-    state.menuOpen = Boolean(parsed.menuOpen);
+    state.menuOpen = typeof parsed.menuOpen === "boolean" ? parsed.menuOpen : true;
     state.deckSize = Number(parsed.deckSize) || 8;
     state.deck = Array.isArray(parsed.deck) ? parsed.deck : [];
     state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
@@ -59,38 +59,36 @@ function loadState() {
     state.roundResult = parsed.roundResult || null;
     state.finished = Boolean(parsed.finished);
     state.score = {
-      wins: Number(parsed.score?.wins) || 0,
-      losses: Number(parsed.score?.losses) || 0,
-      draws: Number(parsed.score?.draws) || 0
+      wins: Number(parsed.score && parsed.score.wins) || 0,
+      losses: Number(parsed.score && parsed.score.losses) || 0,
+      draws: Number(parsed.score && parsed.score.draws) || 0
     };
     state.log = Array.isArray(parsed.log) ? parsed.log : [];
     return true;
   } catch (error) {
-    console.error("Could not load game state:", error);
+    console.error("Could not load saved state:", error);
     return false;
   }
 }
 
-function createNewMatch(keepScore = true) {
-  const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARD_POOL.length));
-  state.deck = shuffle(CARD_POOL).slice(0, safeDeckSize);
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.menuOpen = false;
-  state.log = [`New match started. ${safeDeckSize} cards shuffled locally.`];
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
-  if (!keepScore) {
-    state.score = {
-      wins: 0,
-      losses: 0,
-      draws: 0
-    };
-    state.log.push("Score reset.");
-  }
+function toggleMenu(forceValue) {
+  state.menuOpen = typeof forceValue === "boolean" ? forceValue : !state.menuOpen;
+  saveState();
+  render();
+}
 
+function resetScoreOnly() {
+  state.score = { wins: 0, losses: 0, draws: 0 };
+  state.log.push("Score reset.");
   saveState();
   render();
 }
@@ -104,29 +102,28 @@ function fullReset() {
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
-  state.score = {
-    wins: 0,
-    losses: 0,
-    draws: 0
-  };
+  state.score = { wins: 0, losses: 0, draws: 0 };
   state.log = [];
   saveState();
   render();
 }
 
-function resetScoreOnly() {
-  state.score = {
-    wins: 0,
-    losses: 0,
-    draws: 0
-  };
-  state.log.push("Score reset.");
-  saveState();
-  render();
-}
+function createNewMatch(keepScore) {
+  const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARD_POOL.length));
+  state.deck = shuffle(CARD_POOL).slice(0, safeDeckSize);
+  state.currentIndex = 0;
+  state.selectedStat = null;
+  state.roundResolved = false;
+  state.roundResult = null;
+  state.finished = false;
+  state.menuOpen = false;
+  state.log = [`New match started. ${safeDeckSize} cards shuffled locally.`];
 
-function toggleMenu(forceValue) {
-  state.menuOpen = typeof forceValue === "boolean" ? forceValue : !state.menuOpen;
+  if (!keepScore) {
+    state.score = { wins: 0, losses: 0, draws: 0 };
+    state.log.push("Score reset.");
+  }
+
   saveState();
   render();
 }
@@ -141,63 +138,30 @@ function getSelectedValue() {
   return card.stats[state.selectedStat];
 }
 
-function getRarityClass(rarity) {
-  const safe = String(rarity || "").toLowerCase();
-  if (safe === "mythic") return "rarity-mythic";
-  if (safe === "legendary") return "rarity-legendary";
-  if (safe === "titan") return "rarity-titan";
-  if (safe === "apex") return "rarity-apex";
-  return "rarity-default";
-}
-
-function getStatusText() {
-  if (state.finished) {
-    return "Match finished. Start a new match for a fresh local shuffle.";
-  }
-
-  if (!state.selectedStat) {
-    return "Pick one stat, compare it in real life, then confirm Win, Lose or Draw.";
-  }
-
-  if (!state.roundResolved) {
-    return "Stat selected. Compare values now and record the result.";
-  }
-
-  return "Round resolved. Move to the next card.";
-}
-
-function getResultBadge() {
-  if (!state.roundResolved) {
-    return `<span class="status-badge badge-neutral">Round Open</span>`;
-  }
-
-  if (state.roundResult === "win") {
-    return `<span class="status-badge badge-win">Win Locked</span>`;
-  }
-
-  if (state.roundResult === "lose") {
-    return `<span class="status-badge badge-lose">Lose Locked</span>`;
-  }
-
-  return `<span class="status-badge badge-draw">Draw Locked</span>`;
-}
-
 function selectDeckSize(value) {
   const nextSize = Number(value);
-  if (!Number.isFinite(nextSize)) return;
-  state.deckSize = Math.max(4, Math.min(nextSize, CARD_POOL.length));
-  saveState();
+  if (!isNaN(nextSize)) {
+    state.deckSize = Math.max(4, Math.min(nextSize, CARD_POOL.length));
+    saveState();
+  }
 }
 
 function selectStat(statKey) {
   if (state.roundResolved || state.finished) return;
-
   const card = getCurrentCard();
   if (!card) return;
 
   state.selectedStat = statKey;
   state.log.push(
-    `Round ${state.currentIndex + 1}: ${card.name} selected ${statLabels[statKey]} (${card.stats[statKey]}).`
+    "Round " +
+      (state.currentIndex + 1) +
+      ": " +
+      card.name +
+      " selected " +
+      statLabels[statKey] +
+      " (" +
+      card.stats[statKey] +
+      ")."
   );
   saveState();
   render();
@@ -205,7 +169,6 @@ function selectStat(statKey) {
 
 function resolveRound(result) {
   if (!state.selectedStat || state.roundResolved || state.finished) return;
-
   const card = getCurrentCard();
   if (!card) return;
 
@@ -217,7 +180,17 @@ function resolveRound(result) {
   state.roundResult = result;
 
   state.log.push(
-    `Round ${state.currentIndex + 1}: ${card.name} -> ${statLabels[state.selectedStat]} ${card.stats[state.selectedStat]} -> ${result.toUpperCase()}.`
+    "Round " +
+      (state.currentIndex + 1) +
+      ": " +
+      card.name +
+      " -> " +
+      statLabels[state.selectedStat] +
+      " " +
+      card.stats[state.selectedStat] +
+      " -> " +
+      result.toUpperCase() +
+      "."
   );
 
   saveState();
@@ -232,7 +205,13 @@ function nextCard() {
   if (isLastCard) {
     state.finished = true;
     state.log.push(
-      `Match finished. Final score: ${state.score.wins}W / ${state.score.losses}L / ${state.score.draws}D.`
+      "Match finished. Final score: " +
+        state.score.wins +
+        "W / " +
+        state.score.losses +
+        "L / " +
+        state.score.draws +
+        "D."
     );
     saveState();
     render();
@@ -243,15 +222,46 @@ function nextCard() {
   state.selectedStat = null;
   state.roundResolved = false;
   state.roundResult = null;
-  state.log.push(`Round ${state.currentIndex + 1}: next card revealed.`);
+  state.log.push("Round " + (state.currentIndex + 1) + ": next card revealed.");
   saveState();
   render();
 }
 
-function buildMenuOverlay() {
-  const allowedSizes = [4, 6, 8, 10, 12].filter((size) => size <= CARD_POOL.length);
+function getRarityClass(rarity) {
+  const safe = String(rarity || "").toLowerCase();
+  if (safe === "mythic") return "rarity-mythic";
+  if (safe === "legendary") return "rarity-legendary";
+  if (safe === "titan") return "rarity-titan";
+  if (safe === "apex") return "rarity-apex";
+  return "rarity-default";
+}
 
+function getStatusText() {
+  if (state.finished) return "Match finished. Start a new match for a fresh local shuffle.";
+  if (!state.selectedStat) return "Pick one stat, compare it in real life, then confirm Win, Lose or Draw.";
+  if (!state.roundResolved) return "Stat selected. Compare values now and record the result.";
+  return "Round resolved. Move to the next card.";
+}
+
+function getResultBadge() {
+  if (!state.roundResolved) {
+    return '<span class="status-badge badge-neutral">Round Open</span>';
+  }
+  if (state.roundResult === "win") {
+    return '<span class="status-badge badge-win">Win Locked</span>';
+  }
+  if (state.roundResult === "lose") {
+    return '<span class="status-badge badge-lose">Lose Locked</span>';
+  }
+  return '<span class="status-badge badge-draw">Draw Locked</span>';
+}
+
+function buildMenuOverlay() {
   if (!state.menuOpen) return "";
+
+  const allowedSizes = [4, 6, 8, 10, 12].filter(function (size) {
+    return size <= CARD_POOL.length;
+  });
 
   return `
     <div class="menu-overlay">
@@ -272,10 +282,9 @@ function buildMenuOverlay() {
           <label for="deckSizeSelect" class="field-label">Deck Size</label>
           <select id="deckSizeSelect" class="field-control">
             ${allowedSizes
-              .map(
-                (size) =>
-                  `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} Cards</option>`
-              )
+              .map(function (size) {
+                return '<option value="' + size + '"' + (size === state.deckSize ? " selected" : "") + ">" + size + " Cards</option>";
+              })
               .join("")}
           </select>
         </div>
@@ -285,35 +294,168 @@ function buildMenuOverlay() {
           <button id="menuNewMatchBtn" class="btn btn-secondary" type="button">New Match</button>
           <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
         </div>
-
-        <div class="mini-card-pool">
-          <p class="panel-label">Card Pool</p>
-          <div class="mini-card-pool-grid">
-            ${CARD_POOL.map(
-              (c) => `<div class="mini-card-pill">${escapeHtml(c.name)}</div>`
-            ).join("")}
-          </div>
-        </div>
       </section>
     </div>
   `;
 }
 
-function buildApp() {
+function buildGameContent() {
   const card = getCurrentCard();
   const totalCards = state.deck.length;
-  const roundNumber = state.finished
-    ? totalCards
-    : state.deck.length
-      ? state.currentIndex + 1
-      : 0;
-  const remaining = state.finished
-    ? 0
-    : state.deck.length
-      ? Math.max(totalCards - state.currentIndex - 1, 0)
-      : 0;
+  const roundNumber = state.finished ? totalCards : totalCards ? state.currentIndex + 1 : 0;
+  const remaining = state.finished ? 0 : totalCards ? Math.max(totalCards - state.currentIndex - 1, 0) : 0;
   const selectedValue = getSelectedValue();
 
+  if (!card) {
+    return `
+      <section class="panel">
+        <h2 class="setup-title">No Active Match</h2>
+        <p class="setup-copy">Open the menu and start a match.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="hud-grid micro-hud">
+      <article class="hud-card">
+        <span class="hud-label">Round</span>
+        <strong>${roundNumber} / ${totalCards || state.deckSize}</strong>
+      </article>
+
+      <article class="hud-card">
+        <span class="hud-label">Remaining</span>
+        <strong>${remaining}</strong>
+      </article>
+
+      <article class="hud-card">
+        <span class="hud-label">Score</span>
+        <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
+        <small>W / L / D</small>
+      </article>
+
+      <article class="hud-card">
+        <span class="hud-label">Power</span>
+        <strong>${card.power}</strong>
+      </article>
+    </section>
+
+    <div class="game-grid">
+      <section class="duel-card premium-card">
+        <div class="card-inner-v3 ultra-compact-card">
+          <div class="ultra-topline">
+            <div class="ultra-title-wrap">
+              <h2 class="card-name-v3 ultra-name">${escapeHtml(card.name)}</h2>
+              <p class="card-subtitle-v3 ultra-subtitle">${escapeHtml(card.title)}</p>
+            </div>
+
+            <div class="ultra-meta-right">
+              <div class="power-pill mini-power">
+                <span>Power</span>
+                <strong>${card.power}</strong>
+              </div>
+              <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
+            </div>
+          </div>
+
+          <div class="card-image-frame ultra-image-frame">
+            <img class="card-image-v3 ultra-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
+            <div class="card-role-badge">${escapeHtml(card.type)}</div>
+          </div>
+
+          <div class="mini-meta-row">
+            <div class="meta-box">
+              <span class="meta-label">Role</span>
+              <span class="meta-value">${escapeHtml(card.type)}</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">Rarity</span>
+              <span class="meta-value">${escapeHtml(card.rarity)}</span>
+            </div>
+          </div>
+
+          <div class="stats-list-v3">
+            ${Object.entries(card.stats)
+              .map(function (entry) {
+                const key = entry[0];
+                const value = entry[1];
+                const selected = state.selectedStat === key ? "selected" : "";
+                const disabled = state.roundResolved ? "disabled" : "";
+                return `
+                  <button class="stat-btn-v3 ${selected}" data-stat="${key}" type="button" ${disabled}>
+                    <span class="stat-left">
+                      <span class="stat-name">${statLabels[key]}</span>
+                      <span class="stat-tag">Compare Value</span>
+                    </span>
+                    <span class="stat-number">${value}</span>
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-stack">
+        <section class="panel">
+          <p class="panel-label">Selected Stat</p>
+          <h2 class="selected-ability">${state.selectedStat ? statLabels[state.selectedStat] : "No Stat Selected"}</h2>
+          <div class="selected-value">${selectedValue == null ? "—" : selectedValue}</div>
+          ${getResultBadge()}
+          <p class="status-copy">${getStatusText()}</p>
+        </section>
+
+        <section class="panel">
+          <p class="panel-label">Round Result</p>
+          <div class="result-grid">
+            <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
+            <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
+            <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Lose</button>
+          </div>
+
+          <div class="action-row">
+            <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Next Card</button>
+            <button id="resetScoreBtn" class="btn btn-secondary" type="button">Reset Score</button>
+          </div>
+        </section>
+
+        <section class="log-panel">
+          <div class="log-header">
+            <p class="panel-label">Battle Log</p>
+          </div>
+          <ul class="battle-log">
+            ${
+              state.log.length === 0
+                ? "<li>No entries yet.</li>"
+                : state.log
+                    .slice()
+                    .reverse()
+                    .map(function (entry) {
+                      return "<li>" + escapeHtml(entry) + "</li>";
+                    })
+                    .join("")
+            }
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    ${
+      state.finished
+        ? `
+          <section class="panel">
+            <div class="endscreen-grid">
+              <p class="section-eyebrow">Match Complete</p>
+              <h2 class="endscreen-title">All Cards Played</h2>
+              <div class="endscreen-score">${state.score.wins} / ${state.score.losses} / ${state.score.draws}</div>
+            </div>
+          </section>
+        `
+        : ""
+    }
+  `;
+}
+
+function buildApp() {
   return `
     <section class="screen">
       ${buildMenuOverlay()}
@@ -324,192 +466,51 @@ function buildApp() {
         <button id="quickNewMatchBtn" class="micro-btn alt" type="button">New</button>
       </section>
 
-      <section class="hud-grid micro-hud">
-        <article class="hud-card">
-          <span class="hud-label">Round</span>
-          <strong>${roundNumber} / ${totalCards || state.deckSize}</strong>
-        </article>
-
-        <article class="hud-card">
-          <span class="hud-label">Remaining</span>
-          <strong>${remaining}</strong>
-        </article>
-
-        <article class="hud-card">
-          <span class="hud-label">Score</span>
-          <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
-          <small>W / L / D</small>
-        </article>
-
-        <article class="hud-card">
-          <span class="hud-label">Power</span>
-          <strong>${card ? card.power : "—"}</strong>
-        </article>
-      </section>
-
-      ${
-        card
-          ? `
-            <div class="game-grid">
-              <section class="duel-card premium-card">
-                <div class="card-inner-v3 ultra-compact-card">
-                  <div class="ultra-topline">
-                    <div class="ultra-title-wrap">
-                      <h2 class="card-name-v3 ultra-name">${escapeHtml(card.name)}</h2>
-                      <p class="card-subtitle-v3 ultra-subtitle">${escapeHtml(card.title)}</p>
-                    </div>
-
-                    <div class="ultra-meta-right">
-                      <div class="power-pill mini-power">
-                        <span>Power</span>
-                        <strong>${card.power}</strong>
-                      </div>
-                      <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
-                    </div>
-                  </div>
-
-                  <div class="card-image-frame ultra-image-frame">
-                    <img class="card-image-v3 ultra-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
-                    <div class="card-role-badge">${escapeHtml(card.type)}</div>
-                  </div>
-
-                  <div class="mini-meta-row">
-                    <div class="meta-box">
-                      <span class="meta-label">Role</span>
-                      <span class="meta-value">${escapeHtml(card.type)}</span>
-                    </div>
-                    <div class="meta-box">
-                      <span class="meta-label">Rarity</span>
-                      <span class="meta-value">${escapeHtml(card.rarity)}</span>
-                    </div>
-                  </div>
-
-                  <div class="stats-list-v3">
-                    ${Object.entries(card.stats)
-                      .map(([key, value]) => {
-                        const selected = state.selectedStat === key ? "selected" : "";
-                        const disabled = state.roundResolved ? "disabled" : "";
-                        return `
-                          <button class="stat-btn-v3 ${selected}" data-stat="${key}" type="button" ${disabled}>
-                            <span class="stat-left">
-                              <span class="stat-name">${statLabels[key]}</span>
-                              <span class="stat-tag">Compare Value</span>
-                            </span>
-                            <span class="stat-number">${value}</span>
-                          </button>
-                        `;
-                      })
-                      .join("")}
-                  </div>
-                </div>
-              </section>
-
-              <aside class="side-stack">
-                <section class="panel">
-                  <p class="panel-label">Selected Stat</p>
-                  <h2 class="selected-ability">${state.selectedStat ? statLabels[state.selectedStat] : "No Stat Selected"}</h2>
-                  <div class="selected-value">${selectedValue ?? "—"}</div>
-                  ${getResultBadge()}
-                  <p class="status-copy">${getStatusText()}</p>
-                </section>
-
-                <section class="panel">
-                  <p class="panel-label">Round Result</p>
-                  <div class="result-grid">
-                    <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
-                    <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
-                    <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Lose</button>
-                  </div>
-
-                  <div class="action-row">
-                    <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Next Card</button>
-                    <button id="resetScoreBtn" class="btn btn-secondary" type="button">Reset Score</button>
-                  </div>
-                </section>
-
-                <section class="log-panel">
-                  <div class="log-header">
-                    <p class="panel-label">Battle Log</p>
-                  </div>
-                  <ul class="battle-log">
-                    ${
-                      state.log.length === 0
-                        ? `<li>No entries yet.</li>`
-                        : state.log
-                            .slice()
-                            .reverse()
-                            .map((entry) => `<li>${escapeHtml(entry)}</li>`)
-                            .join("")
-                    }
-                  </ul>
-                </section>
-              </aside>
-            </div>
-          `
-          : `
-            <section class="panel">
-              <h2 class="setup-title">No Active Match</h2>
-              <p class="setup-copy">Open the menu and start a match.</p>
-            </section>
-          `
-      }
-
-      ${
-        state.finished
-          ? `
-            <section class="panel">
-              <div class="endscreen-grid">
-                <p class="section-eyebrow">Match Complete</p>
-                <h2 class="endscreen-title">All Cards Played</h2>
-                <div class="endscreen-score">${state.score.wins} / ${state.score.losses} / ${state.score.draws}</div>
-              </div>
-            </section>
-          `
-          : ""
-      }
+      ${buildGameContent()}
     </section>
   `;
 }
 
 function bindApp() {
-  document.getElementById("menuToggleBtn")?.addEventListener("click", () => toggleMenu());
-  document.getElementById("closeMenuBtn")?.addEventListener("click", () => toggleMenu(false));
-  document.getElementById("quickNewMatchBtn")?.addEventListener("click", () => createNewMatch(true));
-  document.getElementById("menuNewMatchBtn")?.addEventListener("click", () => createNewMatch(true));
-  document.getElementById("deckSizeSelect")?.addEventListener("change", (event) => {
-    selectDeckSize(event.target.value);
-  });
-  document.getElementById("startMatchBtn")?.addEventListener("click", () => createNewMatch(true));
-  document.getElementById("resetAllBtn")?.addEventListener("click", fullReset);
+  const menuToggleBtn = document.getElementById("menuToggleBtn");
+  const closeMenuBtn = document.getElementById("closeMenuBtn");
+  const quickNewMatchBtn = document.getElementById("quickNewMatchBtn");
+  const menuNewMatchBtn = document.getElementById("menuNewMatchBtn");
+  const deckSizeSelect = document.getElementById("deckSizeSelect");
+  const startMatchBtn = document.getElementById("startMatchBtn");
+  const resetAllBtn = document.getElementById("resetAllBtn");
+  const winBtn = document.getElementById("winBtn");
+  const drawBtn = document.getElementById("drawBtn");
+  const loseBtn = document.getElementById("loseBtn");
+  const nextCardBtn = document.getElementById("nextCardBtn");
+  const resetScoreBtn = document.getElementById("resetScoreBtn");
 
-  document.querySelectorAll("[data-stat]").forEach((button) => {
-    button.addEventListener("click", () => {
-      selectStat(button.dataset.stat);
+  if (menuToggleBtn) menuToggleBtn.addEventListener("click", function () { toggleMenu(); });
+  if (closeMenuBtn) closeMenuBtn.addEventListener("click", function () { toggleMenu(false); });
+  if (quickNewMatchBtn) quickNewMatchBtn.addEventListener("click", function () { createNewMatch(true); });
+  if (menuNewMatchBtn) menuNewMatchBtn.addEventListener("click", function () { createNewMatch(true); });
+  if (deckSizeSelect) deckSizeSelect.addEventListener("change", function (event) { selectDeckSize(event.target.value); });
+  if (startMatchBtn) startMatchBtn.addEventListener("click", function () { createNewMatch(true); });
+  if (resetAllBtn) resetAllBtn.addEventListener("click", fullReset);
+  if (winBtn) winBtn.addEventListener("click", function () { resolveRound("win"); });
+  if (drawBtn) drawBtn.addEventListener("click", function () { resolveRound("draw"); });
+  if (loseBtn) loseBtn.addEventListener("click", function () { resolveRound("lose"); });
+  if (nextCardBtn) nextCardBtn.addEventListener("click", nextCard);
+  if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
+
+  const statButtons = document.querySelectorAll("[data-stat]");
+  statButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      selectStat(button.getAttribute("data-stat"));
     });
   });
-
-  document.getElementById("winBtn")?.addEventListener("click", () => resolveRound("win"));
-  document.getElementById("drawBtn")?.addEventListener("click", () => resolveRound("draw"));
-  document.getElementById("loseBtn")?.addEventListener("click", () => resolveRound("lose"));
-  document.getElementById("nextCardBtn")?.addEventListener("click", nextCard);
-  document.getElementById("resetScoreBtn")?.addEventListener("click", resetScoreOnly);
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function render() {
+  if (!appView) return;
+  appView.innerHTML = buildApp();
+  bindApp();
 }
 
-goToSetupBtn.addEventListener("click", () => toggleMenu(true));
-newMatchBtn.addEventListener("click", () => createNewMatch(true));
-
-if (!loadState()) {
-  state.menuOpen = true;
-  render();
-} else {
-  render();
-}
+loadState();
+render();
