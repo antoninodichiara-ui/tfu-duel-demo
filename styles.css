@@ -38,7 +38,7 @@ body {
 }
 
 body {
-  padding: 14px;
+  padding: 10px;
 }
 
 button,
@@ -59,7 +59,7 @@ p {
   max-width: 1280px;
   margin: 0 auto;
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .topbar,
@@ -75,8 +75,8 @@ p {
 .topbar {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: 10px;
+  padding: 14px;
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(16, 24, 54, 0.94), rgba(10, 15, 34, 0.94));
@@ -90,22 +90,22 @@ p {
 .hud-label,
 .label,
 .field-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 h1 {
-  font-size: 1.8rem;
+  font-size: 1.45rem;
   font-weight: 900;
   letter-spacing: -0.03em;
 }
 
 .subline {
-  margin-top: 6px;
+  margin-top: 4px;
   color: #c3cff2;
-  font-size: 0.95rem;
+  font-size: 0.86rem;
 }
 
 .topbar-actions,
@@ -114,13 +114,13 @@ h1 {
 .action-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 #appView,
 .screen {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .panel,
@@ -128,7 +128,7 @@ h1 {
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(15, 22, 49, 0.95), rgba(9, 14, 33, 0.94));
-  padding: 18px;
+  padding: 14px;
   box-shadow: var(--shadow);
 }
 
@@ -136,7 +136,7 @@ h1 {
 .game-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 10px;
 }
 
 .setup-header {
@@ -146,7 +146,7 @@ h1 {
 
 .setup-title,
 .endscreen-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 900;
   letter-spacing: -0.03em;
 }
@@ -157,53 +157,53 @@ h1 {
 .status-copy,
 .field-hint {
   color: #d8e1ff;
-  line-height: 1.55;
-  font-size: 0.95rem;
+  line-height: 1.5;
+  font-size: 0.9rem;
 }
 
 .config-grid,
 .field-group,
 .side-stack {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .field-control {
-  min-height: 50px;
+  min-height: 46px;
   width: 100%;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .hud-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .hud-card {
-  min-height: 88px;
-  padding: 16px;
+  min-height: 74px;
+  padding: 12px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(16, 23, 50, 0.92), rgba(10, 15, 35, 0.92));
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
 }
 
 .hud-card strong {
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .hud-card small {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
 }
 
 .duel-card {
@@ -228,7 +228,7 @@ h1 {
 .premium-card::after {
   content: "";
   position: absolute;
-  inset: 10px;
+  inset: 8px;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   pointer-events: none;
@@ -237,44 +237,47 @@ h1 {
 .card-inner-v3 {
   position: relative;
   z-index: 1;
-  padding: 16px;
+  padding: 12px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .card-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 10px;
 }
 
 .card-title-wrap-v3 {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .card-name-v3 {
-  font-size: 1.5rem;
+  font-size: 1.15rem;
   font-weight: 900;
   letter-spacing: -0.03em;
+  line-height: 1.05;
 }
 
 .card-subtitle-v3 {
-  font-size: 0.96rem;
+  font-size: 0.82rem;
   color: #c4cef2;
+  line-height: 1.2;
 }
 
 .power-stack {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   justify-items: end;
 }
 
 .power-pill {
-  min-width: 86px;
-  padding: 10px 12px;
-  border-radius: 16px;
+  min-width: 72px;
+  padding: 7px 9px;
+  border-radius: 14px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
@@ -282,15 +285,15 @@ h1 {
 
 .power-pill span {
   display: block;
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .power-pill strong {
-  font-size: 1.35rem;
+  font-size: 1.08rem;
   font-weight: 900;
   color: var(--gold);
 }
@@ -300,10 +303,10 @@ h1 {
   width: fit-content;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 8px 12px;
+  min-height: 30px;
+  padding: 6px 10px;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 800;
@@ -337,7 +340,7 @@ h1 {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #0d1429;
-  padding: 10px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -354,16 +357,16 @@ h1 {
 
 .card-role-badge {
   position: absolute;
-  left: 18px;
-  bottom: 18px;
-  min-height: 38px;
-  padding: 9px 14px;
+  left: 16px;
+  bottom: 16px;
+  min-height: 34px;
+  padding: 8px 12px;
   border-radius: 999px;
   background: rgba(8, 13, 29, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -373,33 +376,33 @@ h1 {
 .card-meta-grid-v3 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .meta-box {
-  padding: 12px;
+  padding: 10px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .meta-value {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #f0f4ff;
 }
 
 .stats-list-v3 {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stat-btn-v3 {
   width: 100%;
-  min-height: 58px;
-  padding: 12px 14px;
+  min-height: 54px;
+  padding: 10px 12px;
   border-radius: 16px;
   border: 1px solid rgba(122, 157, 255, 0.16);
   background: rgba(255, 255, 255, 0.04);
@@ -432,35 +435,35 @@ h1 {
 
 .stat-left {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   text-align: left;
 }
 
 .stat-name {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
 }
 
 .stat-tag {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .stat-number {
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 900;
   color: var(--gold);
 }
 
 .selected-ability {
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .selected-value {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 900;
   color: var(--gold);
 }
@@ -468,10 +471,10 @@ h1 {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 8px 12px;
+  min-height: 34px;
+  padding: 7px 11px;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -499,11 +502,11 @@ h1 {
 .result-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .log-header {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .battle-log,
@@ -515,57 +518,57 @@ h1 {
 
 .battle-log {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .battle-log li {
-  padding: 12px 14px;
+  padding: 11px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   color: #dbe4ff;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 .collection-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .collection-card {
-  padding: 14px;
+  padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .collection-name {
-  font-size: 1rem;
+  font-size: 0.96rem;
   font-weight: 800;
 }
 
 .collection-meta {
   color: #c4d0f2;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
 }
 
 .endscreen-grid {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .endscreen-score {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 900;
   color: var(--gold);
 }
 
 .btn {
-  min-height: 48px;
-  padding: 12px 16px;
+  min-height: 44px;
+  padding: 10px 14px;
   border-radius: 14px;
   border: none;
   font-weight: 800;
@@ -653,7 +656,7 @@ h1 {
   }
 
   .game-grid {
-    grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+    grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
     align-items: start;
   }
 
@@ -662,6 +665,10 @@ h1 {
   }
 
   .card-name-v3 {
-    font-size: 1.7rem;
+    font-size: 1.5rem;
+  }
+
+  .card-image-frame {
+    padding: 10px;
   }
 }
