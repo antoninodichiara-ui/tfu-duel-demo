@@ -336,20 +336,26 @@ h1 {
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #10192f;
+  background: #0d1429;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-image-v3 {
   width: 100%;
+  height: auto;
   display: block;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
+  object-fit: contain;
+  border-radius: 14px;
+  max-height: none;
 }
 
 .card-role-badge {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  left: 18px;
+  bottom: 18px;
   min-height: 38px;
   padding: 9px 14px;
   border-radius: 999px;
