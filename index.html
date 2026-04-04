@@ -1,1 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TFU Duel Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
+  <div class="container">
+    <h1>TFU Duel Demo</h1>
+
+    <div class="card">
+      <h2>AETHRON</h2>
+      <p class="type">THE ARCANE TITAN</p>
+
+      <div class="abilities">
+        <button onclick="compare(90)">Arcane Blast — 90</button>
+        <button onclick="compare(85)">Mana Surge — 85</button>
+        <button onclick="compare(95)">Void Collapse — 95</button>
+        <button onclick="compare(88)">Energy Rift — 88</button>
+        <button onclick="compare(92)">Astral Strike — 92</button>
+        <button onclick="compare(80)">Pulse Wave — 80</button>
+      </div>
+    </div>
+
+    <div class="result">
+      <h2 id="resultText">Choose an ability</h2>
+      <p>Score: <span id="score">0</span></p>
+    </div>
+
+    <div class="test-buttons">
+      <button onclick="setResult('win')">Win</button>
+      <button onclick="setResult('lose')">Lose</button>
+      <button onclick="setResult('draw')">Draw</button>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
