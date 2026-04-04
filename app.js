@@ -1,14 +1,12 @@
-const STORAGE_KEY = "tfu-duel-v2-1";
-const CARDS = Array.isArray(window.TFU_CARDS) ? window.TFU_CARDS : [];
+const STORAGE_KEY = "tfu-duel-v3-local";
+const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
 
 const state = {
   screen: "setup",
-  matchMode: "score",
   deckSize: 8,
   deck: [],
   currentIndex: 0,
-  selectedAbility: null,
-  selectedValue: null,
+  selectedStat: null,
   roundResolved: false,
   roundResult: null,
   finished: false,
@@ -17,8 +15,15 @@ const state = {
     losses: 0,
     draws: 0
   },
-  collection: [],
   log: []
+};
+
+const statLabels = {
+  attack: "Attack",
+  defense: "Defense",
+  speed: "Speed",
+  intelligence: "Intelligence",
+  energy: "Energy"
 };
 
 const appView = document.getElementById("appView");
@@ -46,12 +51,10 @@ function loadState() {
     const parsed = JSON.parse(raw);
 
     state.screen = parsed.screen || "setup";
-    state.matchMode = parsed.matchMode || "score";
     state.deckSize = Number(parsed.deckSize) || 8;
     state.deck = Array.isArray(parsed.deck) ? parsed.deck : [];
     state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
-    state.selectedAbility = parsed.selectedAbility || null;
-    state.selectedValue = parsed.selectedValue ?? null;
+    state.selectedStat = parsed.selectedStat || null;
     state.roundResolved = Boolean(parsed.roundResolved);
     state.roundResult = parsed.roundResult || null;
     state.finished = Boolean(parsed.finished);
@@ -60,52 +63,46 @@ function loadState() {
       losses: Number(parsed.score?.losses) || 0,
       draws: Number(parsed.score?.draws) || 0
     };
-    state.collection = Array.isArray(parsed.collection) ? parsed.collection : [];
     state.log = Array.isArray(parsed.log) ? parsed.log : [];
-
     return true;
   } catch (error) {
-    console.error("Fehler beim Laden des Spielstands:", error);
+    console.error("Could not load game state:", error);
     return false;
   }
 }
 
-function getCurrentCard() {
-  return state.deck[state.currentIndex] || null;
-}
-
-function startNewMatch() {
-  const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARDS.length));
-  state.deck = shuffle(CARDS).slice(0, safeDeckSize);
+function createNewMatch(keepScore = true) {
+  const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARD_POOL.length));
+  state.deck = shuffle(CARD_POOL).slice(0, safeDeckSize);
   state.currentIndex = 0;
-  state.selectedAbility = null;
-  state.selectedValue = null;
+  state.selectedStat = null;
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
-  state.log = [
-    `Neues Match gestartet. Modus: ${state.matchMode === "score" ? "Score Mode" : "Collection Mode"}.`,
-    `Deck lokal gemischt. ${safeDeckSize} Karten aktiv.`
-  ];
   state.screen = "game";
+  state.log = [
+    `New match started. ${safeDeckSize} cards shuffled locally.`
+  ];
+
+  if (!keepScore) {
+    state.score = {
+      wins: 0,
+      losses: 0,
+      draws: 0
+    };
+    state.log.push("Score reset.");
+  }
+
   saveState();
   render();
 }
 
-function resetToSetup() {
+function fullReset() {
   state.screen = "setup";
-  saveState();
-  render();
-}
-
-function resetEverything() {
-  state.screen = "setup";
-  state.matchMode = "score";
   state.deckSize = 8;
   state.deck = [];
   state.currentIndex = 0;
-  state.selectedAbility = null;
-  state.selectedValue = null;
+  state.selectedStat = null;
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
@@ -114,119 +111,7 @@ function resetEverything() {
     losses: 0,
     draws: 0
   };
-  state.collection = [];
   state.log = [];
-  saveState();
-  render();
-}
-
-function selectMode(mode) {
-  state.matchMode = mode;
-  saveState();
-  render();
-}
-
-function updateDeckSize(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return;
-  state.deckSize = Math.max(4, Math.min(number, CARDS.length));
-  saveState();
-}
-
-function selectAbility(statName) {
-  if (state.roundResolved || state.finished) return;
-  const currentCard = getCurrentCard();
-  if (!currentCard) return;
-
-  state.selectedAbility = statName;
-  state.selectedValue = currentCard.stats[statName];
-  state.log.push(
-    `Runde ${state.currentIndex + 1}: Fähigkeit "${statName}" mit Wert ${state.selectedValue} gewählt.`
-  );
-  saveState();
-  render();
-}
-
-function resolveRound(resultType) {
-  if (!state.selectedAbility || state.roundResolved || state.finished) return;
-
-  const currentCard = getCurrentCard();
-  if (!currentCard) return;
-
-  state.roundResolved = true;
-  state.roundResult = resultType;
-
-  if (resultType === "win") {
-    state.score.wins += 1;
-    state.log.push(
-      `Runde ${state.currentIndex + 1}: ${currentCard.name} gewinnt mit "${state.selectedAbility}" (${state.selectedValue}).`
-    );
-  }
-
-  if (resultType === "lose") {
-    state.score.losses += 1;
-    state.log.push(
-      `Runde ${state.currentIndex + 1}: ${currentCard.name} verliert mit "${state.selectedAbility}" (${state.selectedValue}).`
-    );
-  }
-
-  if (resultType === "draw") {
-    state.score.draws += 1;
-    state.log.push(
-      `Runde ${state.currentIndex + 1}: ${currentCard.name} endet unentschieden mit "${state.selectedAbility}" (${state.selectedValue}).`
-    );
-  }
-
-  saveState();
-  render();
-}
-
-function addWinToCollection() {
-  if (state.matchMode !== "collection") return;
-  if (!state.roundResolved || state.roundResult !== "win") return;
-
-  const currentCard = getCurrentCard();
-  if (!currentCard) return;
-
-  const exists = state.collection.some((item) => item.id === currentCard.id);
-  if (exists) {
-    state.log.push(`Sammlung: ${currentCard.name} ist bereits in deiner lokalen Collection.`);
-  } else {
-    state.collection.push({
-      id: currentCard.id,
-      name: currentCard.name,
-      title: currentCard.title,
-      faction: currentCard.faction,
-      role: currentCard.role
-    });
-    state.log.push(`Sammlung: ${currentCard.name} wurde lokal zu deiner Collection hinzugefügt.`);
-  }
-
-  saveState();
-  render();
-}
-
-function goToNextCard() {
-  if (!state.roundResolved || state.finished) return;
-
-  const isLastCard = state.currentIndex >= state.deck.length - 1;
-  if (isLastCard) {
-    state.finished = true;
-    state.screen = "end";
-    state.log.push(
-      `Match beendet. Endstand: ${state.score.wins} Win / ${state.score.losses} Lose / ${state.score.draws} Draw.`
-    );
-    saveState();
-    render();
-    return;
-  }
-
-  state.currentIndex += 1;
-  state.selectedAbility = null;
-  state.selectedValue = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.log.push(`Runde ${state.currentIndex + 1} startet. Nächste Karte aufgedeckt.`);
   saveState();
   render();
 }
@@ -237,52 +122,133 @@ function resetScoreOnly() {
     losses: 0,
     draws: 0
   };
-  state.log.push("Score wurde manuell zurückgesetzt.");
+  state.log.push("Score reset.");
   saveState();
   render();
 }
 
-function clearCollection() {
-  state.collection = [];
-  state.log.push("Lokale Collection wurde geleert.");
+function goToSetup() {
+  state.screen = "setup";
   saveState();
   render();
 }
 
-function getRoundBadge() {
-  if (!state.roundResolved) {
-    return `<div class="status-badge badge-neutral">Runde offen</div>`;
-  }
+function getCurrentCard() {
+  return state.deck[state.currentIndex] || null;
+}
 
-  if (state.roundResult === "win") {
-    return `<div class="status-badge badge-win">Win bestätigt</div>`;
-  }
+function getSelectedValue() {
+  const card = getCurrentCard();
+  if (!card || !state.selectedStat) return null;
+  return card.stats[state.selectedStat];
+}
 
-  if (state.roundResult === "lose") {
-    return `<div class="status-badge badge-lose">Lose bestätigt</div>`;
-  }
-
-  return `<div class="status-badge badge-draw">Draw bestätigt</div>`;
+function getRarityClass(rarity) {
+  const safe = String(rarity || "").toLowerCase();
+  if (safe === "mythic") return "rarity-mythic";
+  if (safe === "legendary") return "rarity-legendary";
+  if (safe === "titan") return "rarity-titan";
+  if (safe === "apex") return "rarity-apex";
+  return "rarity-default";
 }
 
 function getStatusText() {
   if (state.finished) {
-    return "Match abgeschlossen. Neues Match starten oder zur Setup-Ansicht zurück.";
+    return "Match finished. Start a new match for a fresh local shuffle.";
   }
 
-  if (!state.selectedAbility) {
-    return "Wähle zuerst eine Fähigkeit auf deiner Karte. Danach trägst du das Rundenergebnis manuell ein.";
+  if (!state.selectedStat) {
+    return "Pick one stat on your current card, compare it with your opponent in real life, then confirm Win, Lose or Draw.";
   }
 
   if (!state.roundResolved) {
-    return "Fähigkeit gewählt. Vergleiche jetzt mit dem Gegner und drücke Win, Lose oder Draw.";
+    return "Stat selected. Compare values now and record the round result.";
   }
 
-  if (state.matchMode === "collection" && state.roundResult === "win") {
-    return "Du hast gewonnen. Du kannst diese Karte optional lokal deiner Collection hinzufügen oder direkt zur nächsten Karte gehen.";
+  return "Round resolved. Move to the next card.";
+}
+
+function getResultBadge() {
+  if (!state.roundResolved) {
+    return `<span class="status-badge badge-neutral">Round open</span>`;
   }
 
-  return "Runde abgeschlossen. Weiter mit der nächsten Karte.";
+  if (state.roundResult === "win") {
+    return `<span class="status-badge badge-win">Win locked</span>`;
+  }
+
+  if (state.roundResult === "lose") {
+    return `<span class="status-badge badge-lose">Lose locked</span>`;
+  }
+
+  return `<span class="status-badge badge-draw">Draw locked</span>`;
+}
+
+function selectDeckSize(value) {
+  const nextSize = Number(value);
+  if (!Number.isFinite(nextSize)) return;
+  state.deckSize = Math.max(4, Math.min(nextSize, CARD_POOL.length));
+  saveState();
+}
+
+function selectStat(statKey) {
+  if (state.roundResolved || state.finished) return;
+
+  const card = getCurrentCard();
+  if (!card) return;
+
+  state.selectedStat = statKey;
+  state.log.push(
+    `Round ${state.currentIndex + 1}: ${card.name} selected ${statLabels[statKey]} (${card.stats[statKey]}).`
+  );
+  saveState();
+  render();
+}
+
+function resolveRound(result) {
+  if (!state.selectedStat || state.roundResolved || state.finished) return;
+
+  const card = getCurrentCard();
+  if (!card) return;
+
+  if (result === "win") state.score.wins += 1;
+  if (result === "lose") state.score.losses += 1;
+  if (result === "draw") state.score.draws += 1;
+
+  state.roundResolved = true;
+  state.roundResult = result;
+
+  state.log.push(
+    `Round ${state.currentIndex + 1}: ${card.name} -> ${statLabels[state.selectedStat]} ${card.stats[state.selectedStat]} -> ${result.toUpperCase()}.`
+  );
+
+  saveState();
+  render();
+}
+
+function nextCard() {
+  if (!state.roundResolved || state.finished) return;
+
+  const isLastCard = state.currentIndex >= state.deck.length - 1;
+
+  if (isLastCard) {
+    state.finished = true;
+    state.screen = "end";
+    state.log.push(
+      `Match finished. Final score: ${state.score.wins}W / ${state.score.losses}L / ${state.score.draws}D.`
+    );
+    saveState();
+    render();
+    return;
+  }
+
+  state.currentIndex += 1;
+  state.selectedStat = null;
+  state.roundResolved = false;
+  state.roundResult = null;
+  state.log.push(`Round ${state.currentIndex + 1}: next card revealed.`);
+  saveState();
+  render();
 }
 
 function render() {
@@ -305,113 +271,97 @@ function render() {
 }
 
 function buildSetupScreen() {
+  const allowedSizes = [4, 6, 8, 10, 12].filter((size) => size <= CARD_POOL.length);
+
   return `
     <section class="screen">
       <div class="setup-grid">
         <section class="panel">
           <div class="setup-header">
-            <p class="section-eyebrow">Version 2.1 Setup</p>
-            <h2 class="setup-title">Lokales Duell sauber starten</h2>
+            <p class="section-eyebrow">TFU Duel Setup</p>
+            <h2 class="setup-title">Local duel on your own device</h2>
             <p class="setup-copy">
-              Jeder Spieler nutzt die App auf seinem eigenen Smartphone. Kein Sync, kein Fake-Multiplayer.
-              Die App verwaltet dein eigenes Deck, deine aktuelle Karte, deinen Score und optional deine lokale Sammlung.
+              Each player runs the app on their own smartphone. No sync, no fake multiplayer, no backend nonsense.
+              You reveal one card locally, pick one stat, compare it in real life, then record Win, Lose or Draw.
             </p>
-          </div>
-
-          <div class="mode-grid">
-            <button class="mode-card ${state.matchMode === "score" ? "active" : ""}" data-mode="score" type="button">
-              <span class="panel-label">Modus</span>
-              <span class="mode-card-title">Score Mode</span>
-              <span class="mode-card-copy">
-                Klassisch und sauber. Nach jeder Runde nur Win / Lose / Draw tracken. Keine Collection-Logik.
-              </span>
-            </button>
-
-            <button class="mode-card ${state.matchMode === "collection" ? "active" : ""}" data-mode="collection" type="button">
-              <span class="panel-label">Modus</span>
-              <span class="mode-card-title">Collection Mode</span>
-              <span class="mode-card-copy">
-                Zusätzlich kannst du gewonnene Karten lokal deiner Sammlung hinzufügen. Das ist bewusst nur lokal/manuell.
-              </span>
-            </button>
           </div>
 
           <div class="config-grid">
             <div class="field-group">
-              <label for="deckSizeSelect" class="field-label">Deckgröße</label>
+              <label for="deckSizeSelect" class="field-label">Deck size</label>
               <select id="deckSizeSelect" class="field-control">
-                ${buildDeckSizeOptions()}
+                ${allowedSizes
+                  .map(
+                    (size) =>
+                      `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} cards</option>`
+                  )
+                  .join("")}
               </select>
               <p class="field-hint">
-                Für den Start reicht 6 oder 8. Mehr Karten sind okay, aber zuerst soll der Flow sauber bleiben.
+                8 or 10 is a good starting point. 12 works too if you want more variation.
               </p>
             </div>
           </div>
 
           <div class="setup-actions">
-            <button id="startMatchBtn" class="btn btn-primary" type="button">Match starten</button>
-            <button id="fullResetBtn" class="btn btn-danger" type="button">Alles zurücksetzen</button>
+            <button id="startMatchBtn" class="btn btn-primary" type="button">Start Match</button>
+            <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
           </div>
         </section>
 
         <section class="panel">
           <div class="setup-header">
-            <p class="section-eyebrow">Projektstatus</p>
-            <h3 class="setup-title">Was diese Version korrekt macht</h3>
+            <p class="section-eyebrow">Current card pool</p>
+            <h3 class="setup-title">${CARD_POOL.length} TFU cards loaded</h3>
+            <p class="setup-copy">
+              Real images are now linked. The app is using your actual uploaded card set, not placeholder demo cards.
+            </p>
           </div>
 
-          <div class="collection-grid">
-            <li class="collection-card">
-              <div class="collection-name">1 Gerät = 1 Spieler</div>
-              <div class="collection-meta">Jeder mischt sein Deck lokal auf dem eigenen Smartphone.</div>
-            </li>
-            <li class="collection-card">
-              <div class="collection-name">Manuelle Rundenauswertung</div>
-              <div class="collection-meta">Passt exakt zu deinem realen Spielablauf ohne Verbindung zwischen den Geräten.</div>
-            </li>
-            <li class="collection-card">
-              <div class="collection-name">Saubere Datenstruktur</div>
-              <div class="collection-meta">Kartendaten liegen getrennt in cards.js statt chaotisch in app.js.</div>
-            </li>
-            <li class="collection-card">
-              <div class="collection-name">Erweiterbar</div>
-              <div class="collection-meta">Der nächste logische Schritt sind echte Assets, Sound, Animationen und bessere Kartenpräsentation.</div>
-            </li>
-          </div>
+          <ul class="collection-grid">
+            ${CARD_POOL.map(
+              (card) => `
+                <li class="collection-card">
+                  <div class="collection-name">${escapeHtml(card.name)}</div>
+                  <div class="collection-meta">${escapeHtml(card.title)} · ${escapeHtml(card.type)} · ${escapeHtml(card.rarity)}</div>
+                </li>
+              `
+            ).join("")}
+          </ul>
         </section>
       </div>
     </section>
   `;
 }
 
-function buildDeckSizeOptions() {
-  const allowedSizes = [4, 6, 8, 10].filter((size) => size <= CARDS.length);
-  return allowedSizes
-    .map((size) => `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} Karten</option>`)
-    .join("");
-}
-
 function buildGameScreen() {
-  const currentCard = getCurrentCard();
+  const card = getCurrentCard();
+  if (!card) {
+    return `
+      <section class="screen">
+        <section class="panel">
+          <h2 class="setup-title">No active deck</h2>
+          <p class="setup-copy">Go back to setup and start a new match.</p>
+        </section>
+      </section>
+    `;
+  }
+
   const totalCards = state.deck.length;
   const roundNumber = state.currentIndex + 1;
   const remaining = Math.max(totalCards - state.currentIndex - 1, 0);
+  const selectedValue = getSelectedValue();
 
   return `
     <section class="screen">
       <section class="hud-grid">
         <article class="hud-card">
-          <span class="hud-label">Modus</span>
-          <strong>${state.matchMode === "score" ? "Score Mode" : "Collection Mode"}</strong>
-        </article>
-
-        <article class="hud-card">
-          <span class="hud-label">Runde</span>
+          <span class="hud-label">Round</span>
           <strong>${roundNumber} / ${totalCards}</strong>
         </article>
 
         <article class="hud-card">
-          <span class="hud-label">Deck verbleibend</span>
+          <span class="hud-label">Cards Remaining</span>
           <strong>${remaining}</strong>
         </article>
 
@@ -420,89 +370,107 @@ function buildGameScreen() {
           <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
           <small>Win / Lose / Draw</small>
         </article>
+
+        <article class="hud-card">
+          <span class="hud-label">Power</span>
+          <strong>${card.power}</strong>
+        </article>
       </section>
 
       <div class="game-grid">
-        <section class="duel-card">
-          ${currentCard ? buildCardHTML(currentCard) : `<div class="card-inner"><h3>Kein Deck aktiv</h3></div>`}
+        <section class="duel-card premium-card">
+          <div class="card-inner-v3">
+            <div class="card-topline">
+              <div class="card-title-wrap-v3">
+                <p class="section-eyebrow">TFU Universe</p>
+                <h2 class="card-name-v3">${escapeHtml(card.name)}</h2>
+                <p class="card-subtitle-v3">${escapeHtml(card.title)}</p>
+              </div>
+
+              <div class="power-stack">
+                <div class="power-pill">
+                  <span>Power</span>
+                  <strong>${card.power}</strong>
+                </div>
+                <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
+              </div>
+            </div>
+
+            <div class="card-image-frame">
+              <img class="card-image-v3" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
+              <div class="card-role-badge">${escapeHtml(card.type)}</div>
+            </div>
+
+            <div class="card-meta-grid-v3">
+              <div class="meta-box">
+                <span class="meta-label">Role</span>
+                <span class="meta-value">${escapeHtml(card.type)}</span>
+              </div>
+              <div class="meta-box">
+                <span class="meta-label">Rarity</span>
+                <span class="meta-value">${escapeHtml(card.rarity)}</span>
+              </div>
+              <div class="meta-box">
+                <span class="meta-label">Card ID</span>
+                <span class="meta-value">#${card.id}</span>
+              </div>
+              <div class="meta-box">
+                <span class="meta-label">Deck Slot</span>
+                <span class="meta-value">${roundNumber}</span>
+              </div>
+            </div>
+
+            <div class="stats-list-v3">
+              ${Object.entries(card.stats)
+                .map(([key, value]) => {
+                  const selected = state.selectedStat === key ? "selected" : "";
+                  const disabled = state.roundResolved ? "disabled" : "";
+                  return `
+                    <button class="stat-btn-v3 ${selected}" data-stat="${key}" type="button" ${disabled}>
+                      <span class="stat-left">
+                        <span class="stat-name">${statLabels[key]}</span>
+                        <span class="stat-tag">Compare value</span>
+                      </span>
+                      <span class="stat-number">${value}</span>
+                    </button>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>
         </section>
 
         <aside class="side-stack">
           <section class="panel">
-            <p class="panel-label">Gewählte Fähigkeit</p>
-            <h2 class="selected-ability">${state.selectedAbility || "Noch keine Fähigkeit gewählt"}</h2>
-            <div class="selected-value">${state.selectedValue ?? "—"}</div>
-            ${getRoundBadge()}
+            <p class="panel-label">Selected stat</p>
+            <h2 class="selected-ability">${state.selectedStat ? statLabels[state.selectedStat] : "No stat selected"}</h2>
+            <div class="selected-value">${selectedValue ?? "—"}</div>
+            ${getResultBadge()}
             <p class="status-copy">${getStatusText()}</p>
           </section>
 
           <section class="panel">
-            <p class="panel-label">Rundenauswertung</p>
+            <p class="panel-label">Round result</p>
             <div class="result-grid">
-              <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedAbility || state.roundResolved ? "disabled" : ""}>Win</button>
-              <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedAbility || state.roundResolved ? "disabled" : ""}>Draw</button>
-              <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedAbility || state.roundResolved ? "disabled" : ""}>Lose</button>
+              <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
+              <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
+              <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Lose</button>
             </div>
 
             <div class="action-row">
-              <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Nächste Karte</button>
-              <button id="resetScoreBtn" class="btn btn-secondary" type="button">Score reset</button>
+              <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Next Card</button>
+              <button id="resetScoreBtn" class="btn btn-secondary" type="button">Reset Score</button>
             </div>
           </section>
 
-          ${
-            state.matchMode === "collection"
-              ? `
-                <section class="panel">
-                  <p class="panel-label">Collection</p>
-                  <p class="collection-copy">
-                    Ohne Verbindung zwischen den Smartphones kann nichts automatisch übertragen werden.
-                    Hier kannst du eine gewonnene Karte nur lokal/manuell zu deiner Sammlung hinzufügen.
-                  </p>
-
-                  <div class="collection-actions">
-                    <button
-                      id="addToCollectionBtn"
-                      class="btn btn-secondary"
-                      type="button"
-                      ${state.roundResolved && state.roundResult === "win" ? "" : "disabled"}
-                    >
-                      Gewinn lokal sammeln
-                    </button>
-                    <button id="clearCollectionBtn" class="btn btn-ghost" type="button">Collection leeren</button>
-                  </div>
-
-                  <ul class="collection-grid">
-                    ${
-                      state.collection.length === 0
-                        ? `<li class="collection-card"><div class="collection-meta">Noch keine Karten in deiner lokalen Collection.</div></li>`
-                        : state.collection
-                            .slice()
-                            .reverse()
-                            .map(
-                              (item) => `
-                                <li class="collection-card">
-                                  <div class="collection-name">${escapeHtml(item.name)}</div>
-                                  <div class="collection-meta">${escapeHtml(item.title)} · ${escapeHtml(item.role)} · ${escapeHtml(item.faction)}</div>
-                                </li>
-                              `
-                            )
-                            .join("")
-                    }
-                  </ul>
-                </section>
-              `
-              : ""
-          }
-
           <section class="log-panel">
             <div class="log-header">
-              <p class="panel-label">Battle Log</p>
+              <p class="panel-label">Battle log</p>
             </div>
             <ul class="battle-log">
               ${
                 state.log.length === 0
-                  ? `<li>Noch kein Eintrag.</li>`
+                  ? `<li>No entries yet.</li>`
                   : state.log
                       .slice()
                       .reverse()
@@ -517,122 +485,41 @@ function buildGameScreen() {
   `;
 }
 
-function buildCardHTML(card) {
-  const statsHTML = Object.entries(card.stats)
-    .map(([statName, value]) => {
-      const isSelected = state.selectedAbility === statName;
-      const classes = [
-        "stat-btn",
-        isSelected ? "selected" : "",
-        state.roundResolved ? "locked" : ""
-      ].filter(Boolean).join(" ");
-
-      return `
-        <button
-          class="${classes}"
-          type="button"
-          data-stat="${escapeHtml(statName)}"
-          ${state.roundResolved ? "disabled" : ""}
-        >
-          <span class="stat-left">
-            <span class="stat-name">${escapeHtml(statName)}</span>
-            <span class="stat-tag">Ability</span>
-          </span>
-          <span class="stat-number">${value}</span>
-        </button>
-      `;
-    })
-    .join("");
-
-  const artHTML = card.image
-    ? `<img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />`
-    : `
-      <div class="card-art-fallback">
-        <span class="card-art-signature">${escapeHtml(card.faction)}</span>
-      </div>
-    `;
-
-  const roleClass = card.role.toLowerCase() === "hero" ? "role-hero" : "role-villain";
-
-  return `
-    <div class="card-inner">
-      <div class="card-head">
-        <div class="card-title-wrap">
-          <h3 class="card-name">${escapeHtml(card.name)}</h3>
-          <p class="card-subtitle">${escapeHtml(card.title)}</p>
-        </div>
-        <div class="role-badge ${roleClass}">${escapeHtml(card.role)}</div>
-      </div>
-
-      <div class="card-art">
-        ${artHTML}
-      </div>
-
-      <div class="card-meta">
-        <div class="meta-box">
-          <span class="meta-label">Fraktion</span>
-          <span class="meta-value">${escapeHtml(card.faction)}</span>
-        </div>
-        <div class="meta-box">
-          <span class="meta-label">Stil</span>
-          <span class="meta-value">${escapeHtml(card.style)}</span>
-        </div>
-      </div>
-
-      <div class="stats-list">
-        ${statsHTML}
-      </div>
-
-      <p class="card-flavor">"${escapeHtml(card.flavor)}"</p>
-    </div>
-  `;
-}
-
 function buildEndScreen() {
   const total = state.deck.length;
   const scoreLine = `${state.score.wins} / ${state.score.losses} / ${state.score.draws}`;
 
-  let verdict = "Ausgeglichenes Match.";
+  let verdict = "Balanced match.";
   if (state.score.wins > state.score.losses) {
-    verdict = "Mehr Siege als Niederlagen. Solider Run.";
+    verdict = "More wins than losses. Solid run.";
   } else if (state.score.losses > state.score.wins) {
-    verdict = "Mehr Niederlagen als Siege. Deck, Fähigkeitenauswahl oder Glück waren schwächer.";
+    verdict = "More losses than wins. Deck luck or stat choices were weaker.";
   }
 
   return `
     <section class="screen">
       <section class="panel">
         <div class="endscreen-grid">
-          <p class="section-eyebrow">Match abgeschlossen</p>
-          <h2 class="endscreen-title">Alle Karten gespielt</h2>
+          <p class="section-eyebrow">Match complete</p>
+          <h2 class="endscreen-title">All cards played</h2>
           <div class="endscreen-score">${scoreLine}</div>
-          <p class="endscreen-copy">
-            ${total} Karten wurden gespielt. ${verdict}
-          </p>
-          <p class="endscreen-copy">
-            Modus: ${state.matchMode === "score" ? "Score Mode" : "Collection Mode"}.
-            ${
-              state.matchMode === "collection"
-                ? `Lokale Collection: ${state.collection.length} Karte(n).`
-                : `Keine Collection-Logik aktiv.`
-            }
-          </p>
+          <p class="endscreen-copy">${total} cards were played. ${verdict}</p>
 
           <div class="endscreen-actions">
             <button id="rematchBtn" class="btn btn-primary" type="button">Rematch</button>
-            <button id="backToSetupBtn" class="btn btn-secondary" type="button">Zur Setup-Ansicht</button>
+            <button id="backToSetupBtn" class="btn btn-secondary" type="button">Back to Setup</button>
           </div>
         </div>
       </section>
 
       <section class="log-panel">
         <div class="log-header">
-          <p class="panel-label">Battle Log</p>
+          <p class="panel-label">Battle log</p>
         </div>
         <ul class="battle-log">
           ${
             state.log.length === 0
-              ? `<li>Noch kein Eintrag.</li>`
+              ? `<li>No entries yet.</li>`
               : state.log
                   .slice()
                   .reverse()
@@ -646,49 +533,31 @@ function buildEndScreen() {
 }
 
 function bindSetupScreen() {
-  document.querySelectorAll("[data-mode]").forEach((button) => {
-    button.addEventListener("click", () => {
-      selectMode(button.dataset.mode);
-    });
+  document.getElementById("deckSizeSelect")?.addEventListener("change", (event) => {
+    selectDeckSize(event.target.value);
   });
 
-  const deckSizeSelect = document.getElementById("deckSizeSelect");
-  if (deckSizeSelect) {
-    deckSizeSelect.addEventListener("change", (event) => {
-      updateDeckSize(event.target.value);
-    });
-  }
-
-  const startMatchBtn = document.getElementById("startMatchBtn");
-  if (startMatchBtn) {
-    startMatchBtn.addEventListener("click", startNewMatch);
-  }
-
-  const fullResetBtn = document.getElementById("fullResetBtn");
-  if (fullResetBtn) {
-    fullResetBtn.addEventListener("click", resetEverything);
-  }
+  document.getElementById("startMatchBtn")?.addEventListener("click", () => createNewMatch(true));
+  document.getElementById("resetAllBtn")?.addEventListener("click", fullReset);
 }
 
 function bindGameScreen() {
   document.querySelectorAll("[data-stat]").forEach((button) => {
     button.addEventListener("click", () => {
-      selectAbility(button.dataset.stat);
+      selectStat(button.dataset.stat);
     });
   });
 
   document.getElementById("winBtn")?.addEventListener("click", () => resolveRound("win"));
   document.getElementById("drawBtn")?.addEventListener("click", () => resolveRound("draw"));
   document.getElementById("loseBtn")?.addEventListener("click", () => resolveRound("lose"));
-  document.getElementById("nextCardBtn")?.addEventListener("click", goToNextCard);
+  document.getElementById("nextCardBtn")?.addEventListener("click", nextCard);
   document.getElementById("resetScoreBtn")?.addEventListener("click", resetScoreOnly);
-  document.getElementById("addToCollectionBtn")?.addEventListener("click", addWinToCollection);
-  document.getElementById("clearCollectionBtn")?.addEventListener("click", clearCollection);
 }
 
 function bindEndScreen() {
-  document.getElementById("rematchBtn")?.addEventListener("click", startNewMatch);
-  document.getElementById("backToSetupBtn")?.addEventListener("click", resetToSetup);
+  document.getElementById("rematchBtn")?.addEventListener("click", () => createNewMatch(true));
+  document.getElementById("backToSetupBtn")?.addEventListener("click", goToSetup);
 }
 
 function escapeHtml(value) {
@@ -700,10 +569,11 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-goToSetupBtn.addEventListener("click", resetToSetup);
-newMatchBtn.addEventListener("click", startNewMatch);
+goToSetupBtn.addEventListener("click", goToSetup);
+newMatchBtn.addEventListener("click", () => createNewMatch(true));
 
 if (!loadState()) {
-  saveState();
+  render();
+} else {
+  render();
 }
-render();
