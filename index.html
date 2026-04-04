@@ -1,40 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>TFU Duel Demo</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFU Duel - Version 2 Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
-  <div class="container">
-    <h1>TFU Duel Demo</h1>
-
-    <div class="card">
-      <h2>AETHRON</h2>
-      <p class="type">THE ARCANE TITAN</p>
-
-      <div class="abilities">
-        <button onclick="compare(90)">Arcane Blast — 90</button>
-        <button onclick="compare(85)">Mana Surge — 85</button>
-        <button onclick="compare(95)">Void Collapse — 95</button>
-        <button onclick="compare(88)">Energy Rift — 88</button>
-        <button onclick="compare(92)">Astral Strike — 92</button>
-        <button onclick="compare(80)">Pulse Wave — 80</button>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">TFU UNIVERSE CARD BATTLE</p>
+        <h1>TFU Duel</h1>
       </div>
-    </div>
+      <button id="restartBtn" class="btn btn-secondary">Neustart</button>
+    </header>
 
-    <div class="result">
-      <h2 id="resultText">Choose an ability</h2>
-      <p>Score: <span id="score">0</span></p>
-    </div>
+    <section class="hud-grid">
+      <article class="hud-card">
+        <span class="hud-label">Runde</span>
+        <strong id="roundLabel">1</strong>
+      </article>
 
-    <div class="test-buttons">
-      <button onclick="setResult('win')">Win</button>
-      <button onclick="setResult('lose')">Lose</button>
-      <button onclick="setResult('draw')">Draw</button>
-    </div>
+      <article class="hud-card">
+        <span class="hud-label">Aktiver Spieler</span>
+        <strong id="turnLabel">Spieler 1</strong>
+      </article>
 
+      <article class="hud-card">
+        <span class="hud-label">Score</span>
+        <strong id="scoreLabel">0 : 0</strong>
+      </article>
+    </section>
+
+    <section class="battle-stage">
+      <div class="versus-line">
+        <span>DUEL</span>
+      </div>
+
+      <div class="cards-grid">
+        <article class="duel-card player-card" id="player1Card"></article>
+        <article class="duel-card player-card" id="player2Card"></article>
+      </div>
+    </section>
+
+    <section class="battle-panel">
+      <div class="battle-panel-top">
+        <div>
+          <p class="panel-label">Gewählte Fähigkeit</p>
+          <h2 id="selectedStatLabel">Noch keine Fähigkeit gewählt</h2>
+        </div>
+
+        <button id="nextRoundBtn" class="btn btn-primary" disabled>Nächste Runde</button>
+      </div>
+
+      <div class="compare-box">
+        <div class="compare-value">
+          <span>Spieler 1</span>
+          <strong id="player1Value">-</strong>
+        </div>
+
+        <div class="compare-center">
+          <span class="compare-vs">VS</span>
+        </div>
+
+        <div class="compare-value">
+          <span>Spieler 2</span>
+          <strong id="player2Value">-</strong>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <p class="panel-label">Rundenergebnis</p>
+        <p id="resultText">Wähle eine Fähigkeit, um die Runde zu starten.</p>
+      </div>
+    </section>
+
+    <section class="log-panel">
+      <div class="log-header">
+        <p class="panel-label">Battle Log</p>
+      </div>
+      <ul id="battleLog" class="battle-log"></ul>
+    </section>
   </div>
 
   <script src="app.js"></script>
