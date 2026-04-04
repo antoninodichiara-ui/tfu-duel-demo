@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TFU Duel — Local Duel Companion</title>
+  <title>TFU Duel — Version 2.1</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet"
   >
   <link rel="stylesheet" href="styles.css" />
@@ -18,75 +18,19 @@
       <div>
         <p class="eyebrow">TFU UNIVERSE CARD BATTLE</p>
         <h1>TFU Duel</h1>
-        <p class="subline">Local Duel Companion</p>
+        <p class="subline">Mobile-first Local Duel Companion</p>
       </div>
 
       <div class="topbar-actions">
-        <button id="newMatchBtn" class="btn btn-secondary" type="button">Neues Match</button>
-        <button id="resetScoreBtn" class="btn btn-ghost" type="button">Score reset</button>
+        <button id="goToSetupBtn" class="btn btn-secondary" type="button">Setup</button>
+        <button id="newMatchBtn" class="btn btn-ghost" type="button">Neues Match</button>
       </div>
     </header>
 
-    <section class="hud-grid">
-      <article class="hud-card">
-        <span class="hud-label">Runde</span>
-        <strong id="roundLabel">1 / 1</strong>
-      </article>
-
-      <article class="hud-card">
-        <span class="hud-label">Deck verbleibend</span>
-        <strong id="deckRemainingLabel">0</strong>
-      </article>
-
-      <article class="hud-card">
-        <span class="hud-label">Score</span>
-        <strong id="scoreLabel">0 / 0 / 0</strong>
-        <small>Win / Lose / Draw</small>
-      </article>
-    </section>
-
-    <section class="game-layout">
-      <article class="card-stage">
-        <div id="currentCard" class="duel-card"></div>
-      </article>
-
-      <aside class="control-panel">
-        <section class="panel-box">
-          <p class="panel-label">Gewählte Fähigkeit</p>
-          <h2 id="selectedAbilityLabel">Noch keine Fähigkeit gewählt</h2>
-          <p id="selectedAbilityValue" class="selected-value">—</p>
-        </section>
-
-        <section class="panel-box">
-          <p class="panel-label">Rundenauswertung</p>
-          <div class="result-grid">
-            <button id="winBtn" class="btn btn-win" type="button" disabled>Win</button>
-            <button id="drawBtn" class="btn btn-draw" type="button" disabled>Draw</button>
-            <button id="loseBtn" class="btn btn-lose" type="button" disabled>Lose</button>
-          </div>
-          <p id="statusText" class="status-text">
-            Wähle zuerst eine Fähigkeit deiner aktuellen Karte.
-          </p>
-        </section>
-
-        <section class="panel-box">
-          <p class="panel-label">Fortschritt</p>
-          <button id="nextCardBtn" class="btn btn-primary" type="button" disabled>Nächste Karte</button>
-          <p class="status-hint">
-            Nach Win / Lose / Draw geht es zur nächsten Karte.
-          </p>
-        </section>
-      </aside>
-    </section>
-
-    <section class="log-panel">
-      <div class="log-header">
-        <p class="panel-label">Battle Log</p>
-      </div>
-      <ul id="battleLog" class="battle-log"></ul>
-    </section>
+    <main id="appView"></main>
   </div>
 
+  <script src="cards.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
