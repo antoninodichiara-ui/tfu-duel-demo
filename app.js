@@ -1,4 +1,6 @@
-const cardDatabase = [
+const STORAGE_KEY = "tfu-duel-local-v2";
+
+const cards = [
   {
     id: "solara-vex",
     name: "Solara Vex",
@@ -146,30 +148,35 @@ const cardDatabase = [
 ];
 
 const state = {
-  player1Deck: [],
-  player2Deck: [],
-  roundIndex: 0,
-  player1Score: 0,
-  player2Score: 0,
-  selectedStat: null,
-  selectedValues: null,
-  roundLocked: false,
-  gameOver: false,
+  deck: [],
+  currentIndex: 0,
+  selectedAbility: null,
+  selectedValue: null,
+  roundResolved: false,
+  finished: false,
+  score: {
+    wins: 0,
+    losses: 0,
+    draws: 0
+  },
   log: []
 };
 
-const player1CardEl = document.getElementById("player1Card");
-const player2CardEl = document.getElementById("player2Card");
+const currentCardEl = document.getElementById("currentCard");
 const roundLabelEl = document.getElementById("roundLabel");
-const turnLabelEl = document.getElementById("turnLabel");
+const deckRemainingLabelEl = document.getElementById("deckRemainingLabel");
 const scoreLabelEl = document.getElementById("scoreLabel");
-const selectedStatLabelEl = document.getElementById("selectedStatLabel");
-const player1ValueEl = document.getElementById("player1Value");
-const player2ValueEl = document.getElementById("player2Value");
-const resultTextEl = document.getElementById("resultText");
+const selectedAbilityLabelEl = document.getElementById("selectedAbilityLabel");
+const selectedAbilityValueEl = document.getElementById("selectedAbilityValue");
+const statusTextEl = document.getElementById("statusText");
 const battleLogEl = document.getElementById("battleLog");
-const nextRoundBtn = document.getElementById("nextRoundBtn");
-const restartBtn = document.getElementById("restartBtn");
+
+const winBtn = document.getElementById("winBtn");
+const drawBtn = document.getElementById("drawBtn");
+const loseBtn = document.getElementById("loseBtn");
+const nextCardBtn = document.getElementById("nextCardBtn");
+const newMatchBtn = document.getElementById("newMatchBtn");
+const resetScoreBtn = document.getElementById("resetScoreBtn");
 
 function shuffle(array) {
   const clone = [...array];
@@ -180,106 +187,86 @@ function shuffle(array) {
   return clone;
 }
 
-function getCurrentPlayerLabel() {
-  return state.roundIndex % 2 === 0 ? "Spieler 1" : "Spieler 2";
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function getActivePlayerNumber() {
-  return state.roundIndex % 2 === 0 ? 1 : 2;
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return false;
+
+  try {
+    const parsed = JSON.parse(saved);
+
+    if (!Array.isArray(parsed.deck) || !parsed.score || !Array.isArray(parsed.log)) {
+      return false;
+    }
+
+    state.deck = parsed.deck;
+    state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
+    state.selectedAbility = parsed.selectedAbility || null;
+    state.selectedValue = parsed.selectedValue ?? null;
+    state.roundResolved = Boolean(parsed.roundResolved);
+    state.finished = Boolean(parsed.finished);
+    state.score = {
+      wins: Number(parsed.score.wins) || 0,
+      losses: Number(parsed.score.losses) || 0,
+      draws: Number(parsed.score.draws) || 0
+    };
+    state.log = parsed.log;
+
+    return true;
+  } catch (error) {
+    console.error("Konnte gespeicherten Spielstand nicht laden:", error);
+    return false;
+  }
 }
 
-function getCurrentCards() {
-  return {
-    player1: state.player1Deck[state.roundIndex],
-    player2: state.player2Deck[state.roundIndex]
-  };
-}
+function createNewMatch({ keepScore = true } = {}) {
+  const shuffledDeck = shuffle(cards);
 
-function setupGame() {
-  const shuffled = shuffle(cardDatabase);
-  const usableCards = shuffled.slice(0, 8);
+  state.deck = shuffledDeck;
+  state.currentIndex = 0;
+  state.selectedAbility = null;
+  state.selectedValue = null;
+  state.roundResolved = false;
+  state.finished = false;
+  state.log = ["Neues Match gestartet. Deck wurde lokal neu gemischt."];
 
-  state.player1Deck = usableCards.slice(0, 4);
-  state.player2Deck = usableCards.slice(4, 8);
-  state.roundIndex = 0;
-  state.player1Score = 0;
-  state.player2Score = 0;
-  state.selectedStat = null;
-  state.selectedValues = null;
-  state.roundLocked = false;
-  state.gameOver = false;
-  state.log = [
-    "Match gestartet. 4 Karten pro Spieler. Spieler 1 beginnt mit der ersten Fähigkeitswahl."
-  ];
+  if (!keepScore) {
+    state.score.wins = 0;
+    state.score.losses = 0;
+    state.score.draws = 0;
+    state.log.push("Score wurde zurückgesetzt.");
+  }
 
+  saveState();
   render();
 }
 
-function render() {
-  const { player1, player2 } = getCurrentCards();
-
-  roundLabelEl.textContent = state.gameOver
-    ? `${state.player1Deck.length} / ${state.player1Deck.length}`
-    : `${state.roundIndex + 1} / ${state.player1Deck.length}`;
-
-  turnLabelEl.textContent = state.gameOver ? "Match beendet" : getCurrentPlayerLabel();
-  scoreLabelEl.textContent = `${state.player1Score} : ${state.player2Score}`;
-
-  if (player1 && player2) {
-    player1CardEl.innerHTML = buildCardHTML(player1, 1);
-    player2CardEl.innerHTML = buildCardHTML(player2, 2);
-    bindStatButtons();
-  } else {
-    player1CardEl.innerHTML = "";
-    player2CardEl.innerHTML = "";
-  }
-
-  if (!state.selectedStat) {
-    selectedStatLabelEl.textContent = state.gameOver
-      ? "Match abgeschlossen"
-      : "Noch keine Fähigkeit gewählt";
-    player1ValueEl.textContent = "-";
-    player2ValueEl.textContent = "-";
-  } else {
-    selectedStatLabelEl.textContent = state.selectedStat;
-    player1ValueEl.textContent = state.selectedValues.player1;
-    player2ValueEl.textContent = state.selectedValues.player2;
-  }
-
-  battleLogEl.innerHTML = state.log
-    .slice()
-    .reverse()
-    .map((entry) => `<li>${entry}</li>`)
-    .join("");
-
-  nextRoundBtn.disabled = !state.roundLocked || state.gameOver;
+function getCurrentCard() {
+  return state.deck[state.currentIndex] || null;
 }
 
-function buildCardHTML(card, playerNumber) {
-  const activePlayer = getActivePlayerNumber();
-  const isActiveCard = activePlayer === playerNumber && !state.roundLocked && !state.gameOver;
-
+function buildCardHTML(card) {
   const statsHTML = Object.entries(card.stats)
     .map(([statName, value]) => {
-      const isSelected = state.selectedStat === statName;
-      const buttonClasses = [
+      const isSelected = state.selectedAbility === statName;
+      const classes = [
         "stat-btn",
-        isActiveCard ? "active-turn" : "disabled",
-        isSelected ? "selected" : ""
-      ]
-        .filter(Boolean)
-        .join(" ");
+        isSelected ? "selected" : "",
+        state.roundResolved || state.finished ? "locked" : ""
+      ].filter(Boolean).join(" ");
 
       return `
         <button
-          class="${buttonClasses}"
-          ${isActiveCard ? "" : "disabled"}
-          data-player="${playerNumber}"
-          data-stat="${statName}"
+          class="${classes}"
           type="button"
+          data-stat="${escapeHtml(statName)}"
+          ${state.roundResolved || state.finished ? "disabled" : ""}
         >
           <span class="stat-left">
-            <span class="stat-name">${statName}</span>
+            <span class="stat-name">${escapeHtml(statName)}</span>
             <span class="stat-tag">Ability</span>
           </span>
           <span class="stat-number">${value}</span>
@@ -288,24 +275,24 @@ function buildCardHTML(card, playerNumber) {
     })
     .join("");
 
-  const roleClass = card.role.toLowerCase() === "hero" ? "role-hero" : "role-villain";
-
   const artHTML = card.image
-    ? `<img src="${card.image}" alt="${card.name}" />`
+    ? `<img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />`
     : `
       <div class="card-art-fallback">
-        <span class="card-art-signature">${card.faction}</span>
+        <span class="card-art-signature">${escapeHtml(card.faction)}</span>
       </div>
     `;
 
+  const roleClass = card.role.toLowerCase() === "hero" ? "role-hero" : "role-villain";
+
   return `
-    <div class="card-inner">
+    <div class="card-inner ${state.finished ? "match-finished" : ""}">
       <div class="card-head">
         <div class="card-title-wrap">
-          <h3 class="card-name">${card.name}</h3>
-          <p class="card-subtitle">${card.title}</p>
+          <h3 class="card-name">${escapeHtml(card.name)}</h3>
+          <p class="card-subtitle">${escapeHtml(card.title)}</p>
         </div>
-        <div class="role-badge ${roleClass}">${card.role}</div>
+        <div class="role-badge ${roleClass}">${escapeHtml(card.role)}</div>
       </div>
 
       <div class="card-art">
@@ -315,11 +302,11 @@ function buildCardHTML(card, playerNumber) {
       <div class="card-meta">
         <div class="meta-box">
           <span class="meta-label">Fraktion</span>
-          <span class="meta-value">${card.faction}</span>
+          <span class="meta-value">${escapeHtml(card.faction)}</span>
         </div>
         <div class="meta-box">
           <span class="meta-label">Stil</span>
-          <span class="meta-value">${card.style}</span>
+          <span class="meta-value">${escapeHtml(card.style)}</span>
         </div>
       </div>
 
@@ -327,98 +314,191 @@ function buildCardHTML(card, playerNumber) {
         ${statsHTML}
       </div>
 
-      <p class="card-flavor">"${card.flavor}"</p>
+      <p class="card-flavor">"${escapeHtml(card.flavor)}"</p>
     </div>
   `;
 }
 
-function bindStatButtons() {
-  const statButtons = document.querySelectorAll(".stat-btn.active-turn");
+function buildEndscreenHTML() {
+  const totalRounds = state.deck.length;
+  const scoreText = `${state.score.wins} / ${state.score.losses} / ${state.score.draws}`;
 
-  statButtons.forEach((button) => {
+  let resultText = "Solides Match.";
+  if (state.score.wins > state.score.losses) {
+    resultText = "Starker Run. Mehr Siege als Niederlagen.";
+  } else if (state.score.losses > state.score.wins) {
+    resultText = "Mehr verloren als gewonnen. Deck oder Entscheidungen prüfen.";
+  } else {
+    resultText = "Ausgeglichen. Kein klarer Vorteil.";
+  }
+
+  return `
+    <div class="endscreen">
+      <p class="panel-label">Match beendet</p>
+      <h2 class="endscreen-title">Alle Karten gespielt</h2>
+      <div class="endscreen-score">${scoreText}</div>
+      <p class="endscreen-subtext">
+        ${totalRounds} Karten wurden durchgespielt. ${resultText}
+      </p>
+      <p class="endscreen-subtext">
+        Starte ein neues Match für ein frisch gemischtes Deck.
+      </p>
+    </div>
+  `;
+}
+
+function render() {
+  const currentCard = getCurrentCard();
+  const totalCards = state.deck.length;
+  const roundNumber = state.finished ? totalCards : state.currentIndex + 1;
+  const remaining = state.finished ? 0 : Math.max(totalCards - state.currentIndex - 1, 0);
+
+  roundLabelEl.textContent = `${roundNumber} / ${totalCards}`;
+  deckRemainingLabelEl.textContent = String(remaining);
+  scoreLabelEl.textContent = `${state.score.wins} / ${state.score.losses} / ${state.score.draws}`;
+
+  if (state.finished) {
+    currentCardEl.innerHTML = buildEndscreenHTML();
+  } else if (currentCard) {
+    currentCardEl.innerHTML = buildCardHTML(currentCard);
+    bindStatButtons();
+  } else {
+    currentCardEl.innerHTML = `<div class="endscreen"><h2 class="endscreen-title">Kein Deck geladen</h2></div>`;
+  }
+
+  selectedAbilityLabelEl.textContent = state.selectedAbility || "Noch keine Fähigkeit gewählt";
+  selectedAbilityValueEl.textContent = state.selectedValue ?? "—";
+
+  if (state.finished) {
+    statusTextEl.textContent = "Match abgeschlossen. Starte ein neues Match.";
+  } else if (state.roundResolved) {
+    statusTextEl.textContent = "Runde ausgewertet. Weiter mit der nächsten Karte.";
+  } else {
+    statusTextEl.textContent = "Wähle zuerst eine Fähigkeit deiner aktuellen Karte.";
+  }
+
+  winBtn.disabled = !state.selectedAbility || state.roundResolved || state.finished;
+  drawBtn.disabled = !state.selectedAbility || state.roundResolved || state.finished;
+  loseBtn.disabled = !state.selectedAbility || state.roundResolved || state.finished;
+  nextCardBtn.disabled = !state.roundResolved || state.finished;
+
+  battleLogEl.innerHTML = state.log
+    .slice()
+    .reverse()
+    .map((entry) => `<li>${escapeHtml(entry)}</li>`)
+    .join("");
+}
+
+function bindStatButtons() {
+  const buttons = currentCardEl.querySelectorAll(".stat-btn");
+  buttons.forEach((button) => {
     button.addEventListener("click", () => {
-      if (state.roundLocked || state.gameOver) return;
+      if (state.roundResolved || state.finished) return;
+
+      const currentCard = getCurrentCard();
+      if (!currentCard) return;
+
       const statName = button.dataset.stat;
-      resolveRound(statName);
+      const statValue = currentCard.stats[statName];
+
+      state.selectedAbility = statName;
+      state.selectedValue = statValue;
+
+      state.log.push(
+        `Runde ${state.currentIndex + 1}: Fähigkeit "${statName}" mit Wert ${statValue} gewählt.`
+      );
+
+      saveState();
+      render();
     });
   });
 }
 
-function resolveRound(statName) {
-  const { player1, player2 } = getCurrentCards();
-  if (!player1 || !player2) return;
+function applyRoundResult(resultType) {
+  if (!state.selectedAbility || state.roundResolved || state.finished) return;
 
-  const player1Value = player1.stats[statName];
-  const player2Value = player2.stats[statName];
+  const currentCard = getCurrentCard();
+  if (!currentCard) return;
 
-  state.selectedStat = statName;
-  state.selectedValues = {
-    player1: player1Value,
-    player2: player2Value
-  };
-  state.roundLocked = true;
-
-  const activePlayer = getCurrentPlayerLabel();
-  let resultMessage = "";
-  let logEntry = "";
-
-  if (player1Value > player2Value) {
-    state.player1Score += 1;
-    resultMessage = `${player1.name} gewinnt die Runde mit ${statName} (${player1Value} zu ${player2Value}).`;
-    logEntry = `Runde ${state.roundIndex + 1}: ${activePlayer} wählt ${statName}. ${player1.name} schlägt ${player2.name} mit ${player1Value} zu ${player2Value}. Punkt für Spieler 1.`;
-    resultTextEl.innerHTML = `<span class="result-win">${resultMessage}</span>`;
-  } else if (player2Value > player1Value) {
-    state.player2Score += 1;
-    resultMessage = `${player2.name} gewinnt die Runde mit ${statName} (${player2Value} zu ${player1Value}).`;
-    logEntry = `Runde ${state.roundIndex + 1}: ${activePlayer} wählt ${statName}. ${player2.name} schlägt ${player1.name} mit ${player2Value} zu ${player1Value}. Punkt für Spieler 2.`;
-    resultTextEl.innerHTML = `<span class="result-lose">${resultMessage}</span>`;
-  } else {
-    resultMessage = `Unentschieden. Beide Karten haben bei ${statName} den Wert ${player1Value}.`;
-    logEntry = `Runde ${state.roundIndex + 1}: ${activePlayer} wählt ${statName}. Gleichstand bei ${player1Value}. Kein Punkt.`;
-    resultTextEl.innerHTML = `<span class="result-draw">${resultMessage}</span>`;
+  if (resultType === "win") {
+    state.score.wins += 1;
+    state.log.push(
+      `Runde ${state.currentIndex + 1}: ${currentCard.name} gewinnt mit "${state.selectedAbility}" (${state.selectedValue}).`
+    );
   }
 
-  state.log.push(logEntry);
+  if (resultType === "lose") {
+    state.score.losses += 1;
+    state.log.push(
+      `Runde ${state.currentIndex + 1}: ${currentCard.name} verliert mit "${state.selectedAbility}" (${state.selectedValue}).`
+    );
+  }
+
+  if (resultType === "draw") {
+    state.score.draws += 1;
+    state.log.push(
+      `Runde ${state.currentIndex + 1}: ${currentCard.name} endet unentschieden mit "${state.selectedAbility}" (${state.selectedValue}).`
+    );
+  }
+
+  state.roundResolved = true;
+  saveState();
   render();
 }
 
-function advanceRound() {
-  if (!state.roundLocked || state.gameOver) return;
+function goToNextCard() {
+  if (!state.roundResolved || state.finished) return;
 
-  const isLastRound = state.roundIndex >= state.player1Deck.length - 1;
+  const isLastCard = state.currentIndex >= state.deck.length - 1;
 
-  if (isLastRound) {
-    state.gameOver = true;
-    state.roundLocked = true;
-
-    let finalMessage = "";
-    if (state.player1Score > state.player2Score) {
-      finalMessage = `Match vorbei. Spieler 1 gewinnt mit ${state.player1Score} : ${state.player2Score}.`;
-      resultTextEl.innerHTML = `<span class="result-win">${finalMessage}</span>`;
-    } else if (state.player2Score > state.player1Score) {
-      finalMessage = `Match vorbei. Spieler 2 gewinnt mit ${state.player2Score} : ${state.player1Score}.`;
-      resultTextEl.innerHTML = `<span class="result-lose">${finalMessage}</span>`;
-    } else {
-      finalMessage = `Match vorbei. Unentschieden mit ${state.player1Score} : ${state.player2Score}.`;
-      resultTextEl.innerHTML = `<span class="result-draw">${finalMessage}</span>`;
-    }
-
-    state.log.push(finalMessage);
-    nextRoundBtn.disabled = true;
+  if (isLastCard) {
+    state.finished = true;
+    state.log.push(
+      `Match beendet. Endscore: ${state.score.wins} Win / ${state.score.losses} Lose / ${state.score.draws} Draw.`
+    );
+    saveState();
     render();
     return;
   }
 
-  state.roundIndex += 1;
-  state.selectedStat = null;
-  state.selectedValues = null;
-  state.roundLocked = false;
-  resultTextEl.textContent = "Wähle eine Fähigkeit, um die nächste Runde zu starten.";
-  state.log.push(`Runde ${state.roundIndex + 1} startet. ${getCurrentPlayerLabel()} ist am Zug.`);
+  state.currentIndex += 1;
+  state.selectedAbility = null;
+  state.selectedValue = null;
+  state.roundResolved = false;
+  state.log.push(`Runde ${state.currentIndex + 1} startet. Nächste Karte aufgedeckt.`);
+  saveState();
   render();
 }
 
-nextRoundBtn.addEventListener("click", advanceRound);
-restartBtn.addEventListener("click", setupGame);
+function resetScoreOnly() {
+  state.score.wins = 0;
+  state.score.losses = 0;
+  state.score.draws = 0;
+  state.log.push("Score wurde manuell zurückgesetzt.");
+  saveState();
+  render();
+}
 
-setupGame();
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+winBtn.addEventListener("click", () => applyRoundResult("win"));
+drawBtn.addEventListener("click", () => applyRoundResult("draw"));
+loseBtn.addEventListener("click", () => applyRoundResult("lose"));
+nextCardBtn.addEventListener("click", goToNextCard);
+newMatchBtn.addEventListener("click", () => createNewMatch({ keepScore: true }));
+resetScoreBtn.addEventListener("click", () => {
+  resetScoreOnly();
+});
+
+if (!loadState()) {
+  createNewMatch({ keepScore: false });
+} else {
+  render();
+}
