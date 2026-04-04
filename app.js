@@ -170,18 +170,18 @@ function getStatusText() {
 
 function getResultBadge() {
   if (!state.roundResolved) {
-    return `<span class="status-badge badge-neutral">Round open</span>`;
+    return `<span class="status-badge badge-neutral">Round Open</span>`;
   }
 
   if (state.roundResult === "win") {
-    return `<span class="status-badge badge-win">Win locked</span>`;
+    return `<span class="status-badge badge-win">Win Locked</span>`;
   }
 
   if (state.roundResult === "lose") {
-    return `<span class="status-badge badge-lose">Lose locked</span>`;
+    return `<span class="status-badge badge-lose">Lose Locked</span>`;
   }
 
-  return `<span class="status-badge badge-draw">Draw locked</span>`;
+  return `<span class="status-badge badge-draw">Draw Locked</span>`;
 }
 
 function selectDeckSize(value) {
@@ -279,7 +279,7 @@ function buildSetupScreen() {
         <section class="panel">
           <div class="setup-header">
             <p class="section-eyebrow">TFU Duel Setup</p>
-            <h2 class="setup-title">Local duel on your own device</h2>
+            <h2 class="setup-title">Local Duel on Your Own Device</h2>
             <p class="setup-copy">
               Each player runs the app on their own smartphone. No sync, no fake multiplayer, no backend nonsense.
               You reveal one card locally, pick one stat, compare it in real life, then record Win, Lose or Draw.
@@ -288,12 +288,12 @@ function buildSetupScreen() {
 
           <div class="config-grid">
             <div class="field-group">
-              <label for="deckSizeSelect" class="field-label">Deck size</label>
+              <label for="deckSizeSelect" class="field-label">Deck Size</label>
               <select id="deckSizeSelect" class="field-control">
                 ${allowedSizes
                   .map(
                     (size) =>
-                      `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} cards</option>`
+                      `<option value="${size}" ${size === state.deckSize ? "selected" : ""}>${size} Cards</option>`
                   )
                   .join("")}
               </select>
@@ -311,10 +311,10 @@ function buildSetupScreen() {
 
         <section class="panel">
           <div class="setup-header">
-            <p class="section-eyebrow">Current card pool</p>
-            <h3 class="setup-title">${CARD_POOL.length} TFU cards loaded</h3>
+            <p class="section-eyebrow">Current Card Pool</p>
+            <h3 class="setup-title">${CARD_POOL.length} TFU Cards Loaded</h3>
             <p class="setup-copy">
-              Real images are now linked. The app is using your actual uploaded card set, not placeholder demo cards.
+              Real images are linked. The app is using your actual uploaded card set, not placeholder demo cards.
             </p>
           </div>
 
@@ -340,7 +340,7 @@ function buildGameScreen() {
     return `
       <section class="screen">
         <section class="panel">
-          <h2 class="setup-title">No active deck</h2>
+          <h2 class="setup-title">No Active Deck</h2>
           <p class="setup-copy">Go back to setup and start a new match.</p>
         </section>
       </section>
@@ -429,7 +429,7 @@ function buildGameScreen() {
                     <button class="stat-btn-v3 ${selected}" data-stat="${key}" type="button" ${disabled}>
                       <span class="stat-left">
                         <span class="stat-name">${statLabels[key]}</span>
-                        <span class="stat-tag">Compare value</span>
+                        <span class="stat-tag">Compare Value</span>
                       </span>
                       <span class="stat-number">${value}</span>
                     </button>
@@ -442,15 +442,15 @@ function buildGameScreen() {
 
         <aside class="side-stack">
           <section class="panel">
-            <p class="panel-label">Selected stat</p>
-            <h2 class="selected-ability">${state.selectedStat ? statLabels[state.selectedStat] : "No stat selected"}</h2>
+            <p class="panel-label">Selected Stat</p>
+            <h2 class="selected-ability">${state.selectedStat ? statLabels[state.selectedStat] : "No Stat Selected"}</h2>
             <div class="selected-value">${selectedValue ?? "—"}</div>
             ${getResultBadge()}
             <p class="status-copy">${getStatusText()}</p>
           </section>
 
           <section class="panel">
-            <p class="panel-label">Round result</p>
+            <p class="panel-label">Round Result</p>
             <div class="result-grid">
               <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
               <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
@@ -465,7 +465,7 @@ function buildGameScreen() {
 
           <section class="log-panel">
             <div class="log-header">
-              <p class="panel-label">Battle log</p>
+              <p class="panel-label">Battle Log</p>
             </div>
             <ul class="battle-log">
               ${
@@ -500,8 +500,8 @@ function buildEndScreen() {
     <section class="screen">
       <section class="panel">
         <div class="endscreen-grid">
-          <p class="section-eyebrow">Match complete</p>
-          <h2 class="endscreen-title">All cards played</h2>
+          <p class="section-eyebrow">Match Complete</p>
+          <h2 class="endscreen-title">All Cards Played</h2>
           <div class="endscreen-score">${scoreLine}</div>
           <p class="endscreen-copy">${total} cards were played. ${verdict}</p>
 
@@ -514,7 +514,7 @@ function buildEndScreen() {
 
       <section class="log-panel">
         <div class="log-header">
-          <p class="panel-label">Battle log</p>
+          <p class="panel-label">Battle Log</p>
         </div>
         <ul class="battle-log">
           ${
