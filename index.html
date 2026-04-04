@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TFU Duel - Version 2 Prototype</title>
+  <title>TFU Duel — Local Duel Companion</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -18,68 +18,65 @@
       <div>
         <p class="eyebrow">TFU UNIVERSE CARD BATTLE</p>
         <h1>TFU Duel</h1>
+        <p class="subline">Local Duel Companion</p>
       </div>
-      <button id="restartBtn" class="btn btn-secondary">Neustart</button>
+
+      <div class="topbar-actions">
+        <button id="newMatchBtn" class="btn btn-secondary" type="button">Neues Match</button>
+        <button id="resetScoreBtn" class="btn btn-ghost" type="button">Score reset</button>
+      </div>
     </header>
 
     <section class="hud-grid">
       <article class="hud-card">
         <span class="hud-label">Runde</span>
-        <strong id="roundLabel">1</strong>
+        <strong id="roundLabel">1 / 1</strong>
       </article>
 
       <article class="hud-card">
-        <span class="hud-label">Aktiver Spieler</span>
-        <strong id="turnLabel">Spieler 1</strong>
+        <span class="hud-label">Deck verbleibend</span>
+        <strong id="deckRemainingLabel">0</strong>
       </article>
 
       <article class="hud-card">
         <span class="hud-label">Score</span>
-        <strong id="scoreLabel">0 : 0</strong>
+        <strong id="scoreLabel">0 / 0 / 0</strong>
+        <small>Win / Lose / Draw</small>
       </article>
     </section>
 
-    <section class="battle-stage">
-      <div class="versus-line">
-        <span>DUEL</span>
-      </div>
+    <section class="game-layout">
+      <article class="card-stage">
+        <div id="currentCard" class="duel-card"></div>
+      </article>
 
-      <div class="cards-grid">
-        <article class="duel-card player-card" id="player1Card"></article>
-        <article class="duel-card player-card" id="player2Card"></article>
-      </div>
-    </section>
-
-    <section class="battle-panel">
-      <div class="battle-panel-top">
-        <div>
+      <aside class="control-panel">
+        <section class="panel-box">
           <p class="panel-label">Gewählte Fähigkeit</p>
-          <h2 id="selectedStatLabel">Noch keine Fähigkeit gewählt</h2>
-        </div>
+          <h2 id="selectedAbilityLabel">Noch keine Fähigkeit gewählt</h2>
+          <p id="selectedAbilityValue" class="selected-value">—</p>
+        </section>
 
-        <button id="nextRoundBtn" class="btn btn-primary" disabled>Nächste Runde</button>
-      </div>
+        <section class="panel-box">
+          <p class="panel-label">Rundenauswertung</p>
+          <div class="result-grid">
+            <button id="winBtn" class="btn btn-win" type="button" disabled>Win</button>
+            <button id="drawBtn" class="btn btn-draw" type="button" disabled>Draw</button>
+            <button id="loseBtn" class="btn btn-lose" type="button" disabled>Lose</button>
+          </div>
+          <p id="statusText" class="status-text">
+            Wähle zuerst eine Fähigkeit deiner aktuellen Karte.
+          </p>
+        </section>
 
-      <div class="compare-box">
-        <div class="compare-value">
-          <span>Spieler 1</span>
-          <strong id="player1Value">-</strong>
-        </div>
-
-        <div class="compare-center">
-          <span class="compare-vs">VS</span>
-        </div>
-
-        <div class="compare-value">
-          <span>Spieler 2</span>
-          <strong id="player2Value">-</strong>
-        </div>
-      </div>
-
-      <div class="result-box">
-        <p class="panel-label">Rundenergebnis</p>
-        <p id="resultText">Wähle eine Fähigkeit, um die Runde zu starten.</p>
-      </div>
+        <section class="panel-box">
+          <p class="panel-label">Fortschritt</p>
+          <button id="nextCardBtn" class="btn btn-primary" type="button" disabled>Nächste Karte</button>
+          <p class="status-hint">
+            Nach Win / Lose / Draw geht es zur nächsten Karte.
+          </p>
+        </section>
+      </aside>
     </section>
 
     <section class="log-panel">
