@@ -666,3 +666,35 @@ p {
     font-size: 1.08rem;
   }
 }
+.linked-info-bar {
+  display: grid;
+  gap: 10px;
+}
+
+.linked-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.share-link-preview {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #dbe4ff;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.panel-link-box {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .linked-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
