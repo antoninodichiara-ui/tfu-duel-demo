@@ -1,5 +1,7 @@
-const STORAGE_KEY = "tfu-duel-v11-local";
-const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
+const STORAGE_KEY = "tfu-duel-v12-local";
+const CARD_POOL = Array.isArray(window.cards)
+  ? window.cards
+  : (typeof cards !== "undefined" ? cards : []);
 
 const state = {
   menuOpen: false,
@@ -20,30 +22,20 @@ const state = {
   matchMode: "local",
   sharedSeed: null,
   playerRole: 1,
-  shareLink: "",
-  openStatPanel: null
+  shareLink: ""
 };
 
 const statLabels = {
-  attack: "Attack",
-  defense: "Defense",
-  speed: "Speed",
-  intelligence: "Intelligence",
-  energy: "Energy",
-  power: "Power"
+  STR: "Strength",
+  AGI: "Agility",
+  VIT: "Vitality",
+  INT: "Intelligence",
+  PWR: "Power",
+  TOT: "Total"
 };
 
-const statShortLabels = {
-  attack: "ATT",
-  defense: "DEF",
-  speed: "SPD",
-  intelligence: "INT",
-  energy: "ENG",
-  power: "PWR"
-};
-
-const leftStats = ["attack", "defense", "speed"];
-const rightStats = ["intelligence", "energy", "power"];
+const leftStats = ["STR", "AGI", "VIT"];
+const rightStats = ["INT", "PWR", "TOT"];
 
 const appView = document.getElementById("appView");
 
@@ -86,7 +78,6 @@ function loadState() {
     state.sharedSeed = parsed.sharedSeed || null;
     state.playerRole = parsed.playerRole === 2 ? 2 : 1;
     state.shareLink = parsed.shareLink || "";
-    state.openStatPanel = null;
     return true;
   } catch (error) {
     console.error("Could not load saved state:", error);
@@ -194,7 +185,6 @@ function parseUrlMatch() {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
-  state.openStatPanel = null;
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.log = [
     "Linked match loaded.",
@@ -222,17 +212,6 @@ function closeImage() {
   render();
 }
 
-function toggleStatPanel(statKey) {
-  if (state.finished) return;
-  state.openStatPanel = state.openStatPanel === statKey ? null : statKey;
-  render();
-}
-
-function closeStatPanel() {
-  state.openStatPanel = null;
-  render();
-}
-
 function resetScoreOnly() {
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.log.push("Score reset.");
@@ -256,7 +235,6 @@ function fullReset() {
   state.sharedSeed = null;
   state.playerRole = 1;
   state.shareLink = "";
-  state.openStatPanel = null;
 
   const url = new URL(window.location.href);
   url.searchParams.delete("mode");
@@ -278,7 +256,6 @@ function createLocalMatch(keepScore) {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
-  state.openStatPanel = null;
   state.matchMode = "local";
   state.sharedSeed = null;
   state.playerRole = 1;
@@ -319,7 +296,6 @@ function createLinkedMatch(keepScore) {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
-  state.openStatPanel = null;
   state.log = [
     "Linked match created.",
     "You are Player 1.",
@@ -371,12 +347,6 @@ function getSelectedValue() {
   return card.stats[state.selectedStat];
 }
 
-function getStatValue(card, statKey) {
-  if (!card) return null;
-  if (statKey === "power") return card.power;
-  return card.stats[statKey];
-}
-
 function selectDeckSize(value) {
   const nextSize = Number(value);
   if (!isNaN(nextSize)) {
@@ -387,25 +357,24 @@ function selectDeckSize(value) {
 
 function selectStat(statKey) {
   if (state.roundResolved || state.finished) return;
-  if (statKey === "power") return;
 
   const card = getCurrentCard();
   if (!card) return;
+  if (!(statKey in card.stats)) return;
 
   state.selectedStat = statKey;
-  state.openStatPanel = null;
-
   state.log.push(
     "Round " +
       (state.currentIndex + 1) +
       ": " +
       card.name +
       " selected " +
-      statLabels[statKey] +
+      statKey +
       " (" +
       card.stats[statKey] +
       ")."
   );
+
   saveState();
   render();
 }
@@ -428,7 +397,7 @@ function resolveRound(result) {
       ": " +
       card.name +
       " -> " +
-      statLabels[state.selectedStat] +
+      state.selectedStat +
       " " +
       card.stats[state.selectedStat] +
       " -> " +
@@ -465,7 +434,6 @@ function nextCard() {
   state.selectedStat = null;
   state.roundResolved = false;
   state.roundResult = null;
-  state.openStatPanel = null;
   state.log.push("Round " + (state.currentIndex + 1) + ": next card revealed.");
   saveState();
   render();
@@ -482,7 +450,7 @@ function getRarityClass(rarity) {
 
 function getStatusText() {
   if (state.finished) return "Match finished. Start a new match for a fresh setup.";
-  if (!state.selectedStat) return "Open a side stat panel and choose your category.";
+  if (!state.selectedStat) return "Choose one stat directly from the side buttons.";
   if (!state.roundResolved) return "Compare values now and confirm the round result.";
   return "Round resolved. Move to the next card.";
 }
@@ -584,55 +552,16 @@ function buildLinkedInfoBar() {
   `;
 }
 
-function buildSideStick(statKey, side, card) {
-  const value = getStatValue(card, statKey);
-  const isOpen = state.openStatPanel === statKey;
-  const isSelected = state.selectedStat === statKey;
-  const isPower = statKey === "power";
-
+function buildSideButton(statKey, side, isSelected) {
   return `
-    <div class="stick-wrap ${side}">
-      <button
-        class="side-stick ${side} ${isSelected ? "selected" : ""} ${isOpen ? "open" : ""} ${isPower ? "info-only" : ""}"
-        data-open-stat="${statKey}"
-        type="button"
-        ${state.finished ? "disabled" : ""}
-      >
-        <span class="stick-short">${statShortLabels[statKey]}</span>
-      </button>
-
-      ${
-        isOpen
-          ? `
-            <div class="slide-panel ${side}">
-              <div class="slide-panel-inner glass-panel">
-                <div class="slide-top">
-                  <span class="slide-label">${escapeHtml(statLabels[statKey])}</span>
-                  <button class="slide-close" data-close-stat type="button">✕</button>
-                </div>
-
-                <div class="slide-value">${value}</div>
-
-                ${
-                  isPower
-                    ? `<div class="slide-info-only">Info Only</div>`
-                    : `
-                      <button
-                        class="btn btn-primary slide-select-btn"
-                        data-confirm-stat="${statKey}"
-                        type="button"
-                        ${state.roundResolved ? "disabled" : ""}
-                      >
-                        ${isSelected ? "Selected" : "Select"}
-                      </button>
-                    `
-                }
-              </div>
-            </div>
-          `
-          : ""
-      }
-    </div>
+    <button
+      class="side-stick ${side} ${isSelected ? "selected" : ""}"
+      data-select-stat="${statKey}"
+      type="button"
+      ${state.finished || state.roundResolved ? "disabled" : ""}
+    >
+      <span class="stick-short">${statKey}</span>
+    </button>
   `;
 }
 
@@ -640,7 +569,7 @@ function buildBottomControls(totalCards) {
   const roundNumber = state.finished ? totalCards : totalCards ? state.currentIndex + 1 : 0;
 
   return `
-    <section class="bottom-compact-bar">
+    <section class="bottom-compact-bar in-card-actions">
       <div class="bottom-status-line">
         <div class="bottom-mini-box">
           <span class="hud-label">Round</span>
@@ -655,7 +584,7 @@ function buildBottomControls(totalCards) {
 
         <div class="bottom-mini-box">
           <span class="hud-label">Selected</span>
-          <strong>${state.selectedStat ? statShortLabels[state.selectedStat] : "—"}</strong>
+          <strong>${state.selectedStat || "—"}</strong>
         </div>
 
         <div class="bottom-badge-box">
@@ -703,19 +632,17 @@ function buildGameContent() {
         </div>
 
         <div class="arena-top-right">
-          <div class="arena-power-badge">
-            <span>Power</span>
-            <strong>${card.power}</strong>
-          </div>
           <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
         </div>
       </div>
 
       <div class="card-stage">
         <div class="left-stick-column">
-          ${leftStats.map(function (statKey) {
-            return buildSideStick(statKey, "left", card);
-          }).join("")}
+          ${leftStats
+            .map(function (statKey) {
+              return buildSideButton(statKey, "left", state.selectedStat === statKey);
+            })
+            .join("")}
         </div>
 
         <div class="hero-card-zone">
@@ -727,9 +654,11 @@ function buildGameContent() {
         </div>
 
         <div class="right-stick-column">
-          ${rightStats.map(function (statKey) {
-            return buildSideStick(statKey, "right", card);
-          }).join("")}
+          ${rightStats
+            .map(function (statKey) {
+              return buildSideButton(statKey, "right", state.selectedStat === statKey);
+            })
+            .join("")}
         </div>
       </div>
 
@@ -799,24 +728,10 @@ function bindApp() {
     });
   }
 
-  const statOpenButtons = document.querySelectorAll("[data-open-stat]");
-  statOpenButtons.forEach(function (button) {
+  const statButtons = document.querySelectorAll("[data-select-stat]");
+  statButtons.forEach(function (button) {
     button.addEventListener("click", function () {
-      toggleStatPanel(button.getAttribute("data-open-stat"));
-    });
-  });
-
-  const statCloseButtons = document.querySelectorAll("[data-close-stat]");
-  statCloseButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
-      closeStatPanel();
-    });
-  });
-
-  const confirmStatButtons = document.querySelectorAll("[data-confirm-stat]");
-  confirmStatButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
-      selectStat(button.getAttribute("data-confirm-stat"));
+      selectStat(button.getAttribute("data-select-stat"));
     });
   });
 }
