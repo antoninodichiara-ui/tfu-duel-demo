@@ -1,9 +1,11 @@
-const STORAGE_KEY = "tfu-duel-v9-local";
+const STORAGE_KEY = "tfu-duel-v10-local";
 const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
 
 const state = {
   menuOpen: false,
   imageOpen: false,
+  statPopupOpen: false,
+  statPopupKey: null,
   deckSize: 8,
   deck: [],
   currentIndex: 0,
@@ -17,9 +19,9 @@ const state = {
     draws: 0
   },
   log: [],
-  matchMode: "local", // local | linked
+  matchMode: "local",
   sharedSeed: null,
-  playerRole: 1, // 1 | 2
+  playerRole: 1,
   shareLink: ""
 };
 
@@ -30,6 +32,18 @@ const statLabels = {
   intelligence: "Intelligence",
   energy: "Energy"
 };
+
+const statShortLabels = {
+  attack: "ATT",
+  defense: "DEF",
+  speed: "SPD",
+  intelligence: "INT",
+  energy: "ENG",
+  power: "PWR"
+};
+
+const leftStats = ["attack", "defense", "speed"];
+const rightStats = ["intelligence", "energy", "power"];
 
 const appView = document.getElementById("appView");
 
@@ -55,6 +69,8 @@ function loadState() {
 
     state.menuOpen = typeof parsed.menuOpen === "boolean" ? parsed.menuOpen : false;
     state.imageOpen = false;
+    state.statPopupOpen = false;
+    state.statPopupKey = null;
     state.deckSize = Number(parsed.deckSize) || 8;
     state.deck = Array.isArray(parsed.deck) ? parsed.deck : [];
     state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
@@ -179,6 +195,8 @@ function parseUrlMatch() {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.log = [
     "Linked match loaded.",
@@ -206,6 +224,19 @@ function closeImage() {
   render();
 }
 
+function openStatPopup(statKey) {
+  if (state.finished) return;
+  state.statPopupOpen = true;
+  state.statPopupKey = statKey;
+  render();
+}
+
+function closeStatPopup() {
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
+  render();
+}
+
 function resetScoreOnly() {
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.log.push("Score reset.");
@@ -216,6 +247,8 @@ function resetScoreOnly() {
 function fullReset() {
   state.menuOpen = true;
   state.imageOpen = false;
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
   state.deckSize = 8;
   state.deck = [];
   state.currentIndex = 0;
@@ -250,6 +283,8 @@ function createLocalMatch(keepScore) {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
   state.matchMode = "local";
   state.sharedSeed = null;
   state.playerRole = 1;
@@ -290,6 +325,8 @@ function createLinkedMatch(keepScore) {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
   state.log = [
     "Linked match created.",
     "You are Player 1.",
@@ -341,6 +378,12 @@ function getSelectedValue() {
   return card.stats[state.selectedStat];
 }
 
+function getStatValue(card, statKey) {
+  if (!card) return null;
+  if (statKey === "power") return card.power;
+  return card.stats[statKey];
+}
+
 function selectDeckSize(value) {
   const nextSize = Number(value);
   if (!isNaN(nextSize)) {
@@ -351,10 +394,15 @@ function selectDeckSize(value) {
 
 function selectStat(statKey) {
   if (state.roundResolved || state.finished) return;
+  if (statKey === "power") return;
+
   const card = getCurrentCard();
   if (!card) return;
 
   state.selectedStat = statKey;
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
+
   state.log.push(
     "Round " +
       (state.currentIndex + 1) +
@@ -425,6 +473,8 @@ function nextCard() {
   state.selectedStat = null;
   state.roundResolved = false;
   state.roundResult = null;
+  state.statPopupOpen = false;
+  state.statPopupKey = null;
   state.log.push("Round " + (state.currentIndex + 1) + ": next card revealed.");
   saveState();
   render();
@@ -441,7 +491,7 @@ function getRarityClass(rarity) {
 
 function getStatusText() {
   if (state.finished) return "Match finished. Start a new match for a fresh setup.";
-  if (!state.selectedStat) return "Pick one stat, compare it in real life, then confirm Win, Lose or Draw.";
+  if (!state.selectedStat) return "Open a stat tab, review the value, then select it.";
   if (!state.roundResolved) return "Stat selected. Compare values now and record the result.";
   return "Round resolved. Move to the next card.";
 }
@@ -555,12 +605,120 @@ function buildLinkedInfoBar() {
   `;
 }
 
+function buildStatTab(statKey, card, side) {
+  const value = getStatValue(card, statKey);
+  const isSelectable = statKey !== "power";
+  const isSelected = state.selectedStat === statKey;
+  const isPopupOpen = state.statPopupOpen && state.statPopupKey === statKey;
+
+  return `
+    <button
+      class="side-stat-tab ${side} ${isSelected ? "selected" : ""} ${!isSelectable ? "info-only" : ""}"
+      data-open-stat="${statKey}"
+      type="button"
+      ${state.finished ? "disabled" : ""}
+    >
+      <span>${statShortLabels[statKey]}</span>
+      ${
+        isPopupOpen
+          ? `<span class="side-stat-dot active"></span>`
+          : `<span class="side-stat-dot"></span>`
+      }
+      ${
+        isSelected
+          ? `<em class="side-selected-marker">✓</em>`
+          : ""
+      }
+    </button>
+  `;
+}
+
+function buildStatPopup(card) {
+  if (!state.statPopupOpen || !state.statPopupKey || !card) return "";
+
+  const statKey = state.statPopupKey;
+  const value = getStatValue(card, statKey);
+  const isPower = statKey === "power";
+  const title = isPower ? "Power" : statLabels[statKey];
+  const description = isPower
+    ? "Power is informational only in this layout."
+    : "Use this stat for the current round.";
+
+  return `
+    <section class="stat-popup-panel">
+      <div class="stat-popup-head">
+        <div>
+          <p class="panel-label">Stat Preview</p>
+          <h3 class="stat-popup-title">${escapeHtml(title)}</h3>
+        </div>
+        <button id="closeStatPopupBtn" class="stat-popup-close" type="button">✕</button>
+      </div>
+
+      <div class="stat-popup-value">${value}</div>
+      <p class="stat-popup-copy">${escapeHtml(description)}</p>
+
+      ${
+        !isPower
+          ? `
+            <div class="stat-popup-actions">
+              <button id="confirmStatBtn" class="btn btn-primary" data-confirm-stat="${statKey}" type="button">
+                ${state.selectedStat === statKey ? "Selected" : "Select Stat"}
+              </button>
+            </div>
+          `
+          : ""
+      }
+    </section>
+  `;
+}
+
+function buildBottomBar(totalCards) {
+  const roundNumber = state.finished ? totalCards : totalCards ? state.currentIndex + 1 : 0;
+
+  return `
+    <section class="bottom-action-zone">
+      <div class="battle-action-row">
+        <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
+        <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
+        <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Lose</button>
+        <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Next</button>
+      </div>
+
+      <div class="battle-status-row">
+        <div class="mini-status-card">
+          <span class="hud-label">Score</span>
+          <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
+          <small>W / L / D</small>
+        </div>
+
+        <div class="mini-status-card">
+          <span class="hud-label">Round</span>
+          <strong>${roundNumber} / ${totalCards || state.deckSize}</strong>
+          <small>${getStatusText()}</small>
+        </div>
+      </div>
+
+      <div class="selected-stat-strip">
+        <div>
+          <span class="hud-label">Selected Stat</span>
+          <strong>${state.selectedStat ? statLabels[state.selectedStat] : "None"}</strong>
+        </div>
+        <div>
+          <span class="hud-label">Value</span>
+          <strong>${getSelectedValue() == null ? "—" : getSelectedValue()}</strong>
+        </div>
+        <div class="selected-result-badge-wrap">
+          ${getResultBadge()}
+        </div>
+        <button id="resetScoreBtn" class="btn btn-secondary small" type="button">Reset Score</button>
+      </div>
+    </section>
+  `;
+}
+
 function buildGameContent() {
   const card = getCurrentCard();
   const totalCards = state.deck.length;
-  const roundNumber = state.finished ? totalCards : totalCards ? state.currentIndex + 1 : 0;
-  const remaining = state.finished ? 0 : totalCards ? Math.max(totalCards - state.currentIndex - 1, 0) : 0;
-  const selectedValue = getSelectedValue();
 
   if (!card) {
     return `
@@ -575,143 +733,52 @@ function buildGameContent() {
   return `
     ${buildLinkedInfoBar()}
 
-    <section class="hud-grid micro-hud">
-      <article class="hud-card">
-        <span class="hud-label">Round</span>
-        <strong>${roundNumber} / ${totalCards || state.deckSize}</strong>
-      </article>
-
-      <article class="hud-card">
-        <span class="hud-label">Remaining</span>
-        <strong>${remaining}</strong>
-      </article>
-
-      <article class="hud-card">
-        <span class="hud-label">Score</span>
-        <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
-        <small>W / L / D</small>
-      </article>
-
-      <article class="hud-card">
-        <span class="hud-label">Power</span>
-        <strong>${card.power}</strong>
-      </article>
-    </section>
-
-    <div class="game-grid">
-      <section class="duel-card premium-card">
-        <div class="card-inner-v3 ultra-compact-card">
-          <div class="ultra-topline">
-            <div class="ultra-title-wrap">
-              <h2 class="card-name-v3 ultra-name">${escapeHtml(card.name)}</h2>
-              <p class="card-subtitle-v3 ultra-subtitle">${escapeHtml(card.title)}</p>
-            </div>
-
-            <div class="ultra-meta-right">
-              <div class="power-pill mini-power">
-                <span>Power</span>
-                <strong>${card.power}</strong>
-              </div>
-              <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
-            </div>
-          </div>
-
-          <button id="openImageBtn" class="card-image-frame ultra-image-frame card-image-button" type="button">
-            <img class="card-image-v3 ultra-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
-            <div class="card-role-badge">${escapeHtml(card.type)}</div>
-            <div class="image-zoom-hint">Tap to expand</div>
-          </button>
-
-          <div class="mini-meta-row">
-            <div class="meta-box">
-              <span class="meta-label">Role</span>
-              <span class="meta-value">${escapeHtml(card.type)}</span>
-            </div>
-            <div class="meta-box">
-              <span class="meta-label">Rarity</span>
-              <span class="meta-value">${escapeHtml(card.rarity)}</span>
-            </div>
-          </div>
-
-          <div class="stats-list-v3">
-            ${Object.entries(card.stats)
-              .map(function (entry) {
-                const key = entry[0];
-                const value = entry[1];
-                const selected = state.selectedStat === key ? "selected" : "";
-                const disabled = state.roundResolved ? "disabled" : "";
-                return `
-                  <button class="stat-btn-v3 ${selected}" data-stat="${key}" type="button" ${disabled}>
-                    <span class="stat-left">
-                      <span class="stat-name">${statLabels[key]}</span>
-                      <span class="stat-tag">Compare Value</span>
-                    </span>
-                    <span class="stat-number">${value}</span>
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
+    <section class="battle-screen-shell">
+      <div class="battle-stage">
+        <div class="side-rail left-rail">
+          ${leftStats.map(function (statKey) {
+            return buildStatTab(statKey, card, "left");
+          }).join("")}
         </div>
-      </section>
 
-      <aside class="side-stack">
-        <section class="panel">
-          <p class="panel-label">Selected Stat</p>
-          <h2 class="selected-ability">${state.selectedStat ? statLabels[state.selectedStat] : "No Stat Selected"}</h2>
-          <div class="selected-value">${selectedValue == null ? "—" : selectedValue}</div>
-          ${getResultBadge()}
-          <p class="status-copy">${getStatusText()}</p>
-        </section>
+        <div class="center-card-zone">
+          <section class="duel-card premium-card fixed-card-stage">
+            <div class="card-inner-v3 core-card-layout">
+              <div class="core-topline">
+                <div class="core-title-wrap">
+                  <h2 class="card-name-v3 core-name">${escapeHtml(card.name)}</h2>
+                  <p class="card-subtitle-v3 core-subtitle">${escapeHtml(card.title)}</p>
+                </div>
 
-        <section class="panel">
-          <p class="panel-label">Round Result</p>
-          <div class="result-grid">
-            <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
-            <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
-            <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Lose</button>
-          </div>
+                <div class="core-meta-right">
+                  <div class="power-pill mini-power">
+                    <span>Power</span>
+                    <strong>${card.power}</strong>
+                  </div>
+                  <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
+                </div>
+              </div>
 
-          <div class="action-row">
-            <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Next Card</button>
-            <button id="resetScoreBtn" class="btn btn-secondary" type="button">Reset Score</button>
-          </div>
-        </section>
-
-        <section class="log-panel">
-          <div class="log-header">
-            <p class="panel-label">Battle Log</p>
-          </div>
-          <ul class="battle-log">
-            ${
-              state.log.length === 0
-                ? "<li>No entries yet.</li>"
-                : state.log
-                    .slice()
-                    .reverse()
-                    .map(function (entry) {
-                      return "<li>" + escapeHtml(entry) + "</li>";
-                    })
-                    .join("")
-            }
-          </ul>
-        </section>
-      </aside>
-    </div>
-
-    ${
-      state.finished
-        ? `
-          <section class="panel">
-            <div class="endscreen-grid">
-              <p class="section-eyebrow">Match Complete</p>
-              <h2 class="endscreen-title">All Cards Played</h2>
-              <div class="endscreen-score">${state.score.wins} / ${state.score.losses} / ${state.score.draws}</div>
+              <button id="openImageBtn" class="card-image-frame core-image-frame card-image-button" type="button">
+                <img class="card-image-v3 core-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
+                <div class="card-role-badge">${escapeHtml(card.type)}</div>
+                <div class="image-zoom-hint">Tap to expand</div>
+              </button>
             </div>
           </section>
-        `
-        : ""
-    }
+
+          ${buildStatPopup(card)}
+        </div>
+
+        <div class="side-rail right-rail">
+          ${rightStats.map(function (statKey) {
+            return buildStatTab(statKey, card, "right");
+          }).join("")}
+        </div>
+      </div>
+
+      ${buildBottomBar(totalCards)}
+    </section>
   `;
 }
 
@@ -750,6 +817,8 @@ function bindApp() {
   const imageOverlay = document.getElementById("imageOverlay");
   const copyShareLinkBtn = document.getElementById("copyShareLinkBtn");
   const copyShareLinkInlineBtn = document.getElementById("copyShareLinkInlineBtn");
+  const closeStatPopupBtn = document.getElementById("closeStatPopupBtn");
+  const confirmStatBtn = document.getElementById("confirmStatBtn");
 
   if (menuToggleBtn) menuToggleBtn.addEventListener("click", function () { toggleMenu(); });
   if (closeMenuBtn) closeMenuBtn.addEventListener("click", function () { toggleMenu(false); });
@@ -767,6 +836,14 @@ function bindApp() {
   if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
   if (copyShareLinkBtn) copyShareLinkBtn.addEventListener("click", copyShareLink);
   if (copyShareLinkInlineBtn) copyShareLinkInlineBtn.addEventListener("click", copyShareLink);
+  if (closeStatPopupBtn) closeStatPopupBtn.addEventListener("click", closeStatPopup);
+
+  if (confirmStatBtn) {
+    confirmStatBtn.addEventListener("click", function () {
+      const statKey = confirmStatBtn.getAttribute("data-confirm-stat");
+      selectStat(statKey);
+    });
+  }
 
   if (imageOverlay) {
     imageOverlay.addEventListener("click", function (event) {
@@ -776,10 +853,10 @@ function bindApp() {
     });
   }
 
-  const statButtons = document.querySelectorAll("[data-stat]");
-  statButtons.forEach(function (button) {
+  const statOpenButtons = document.querySelectorAll("[data-open-stat]");
+  statOpenButtons.forEach(function (button) {
     button.addEventListener("click", function () {
-      selectStat(button.getAttribute("data-stat"));
+      openStatPopup(button.getAttribute("data-open-stat"));
     });
   });
 }
