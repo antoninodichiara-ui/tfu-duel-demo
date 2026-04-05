@@ -1,4 +1,4 @@
-export const cards = [
+const cards = [
   {
     id: 1,
     name: "Aethron",
