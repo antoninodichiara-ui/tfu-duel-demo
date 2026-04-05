@@ -1,19 +1,19 @@
-window.cards = [
+export const cards = [
   {
     id: 1,
     name: "Aethron",
     title: "The Time Paradox",
     type: "Hero",
     rarity: "Legendary",
-    power: 107,
-    image: "assets/cards/aethron.jpeg",
+    image: "/assets/cards/aethron.jpeg",
     stats: {
-      attack: 86,
-      defense: 95,
-      speed: 102,
-      intelligence: 107,
-      energy: 100
-    }
+      STR: 86,
+      AGI: 102,
+      VIT: 95,
+      INT: 107,
+      PWR: 100,
+      TOT: 490,
+    },
   },
   {
     id: 2,
@@ -21,15 +21,15 @@ window.cards = [
     title: "The Frequency Breaker",
     type: "Villain",
     rarity: "Legendary",
-    power: 109,
-    image: "assets/cards/dissona.jpeg",
+    image: "/assets/cards/dissona.jpeg",
     stats: {
-      attack: 78,
-      defense: 84,
-      speed: 96,
-      intelligence: 103,
-      energy: 109
-    }
+      STR: 78,
+      AGI: 96,
+      VIT: 84,
+      INT: 103,
+      PWR: 109,
+      TOT: 470,
+    },
   },
   {
     id: 3,
@@ -37,15 +37,15 @@ window.cards = [
     title: "The Lifeforge",
     type: "Hero",
     rarity: "Legendary",
-    power: 104,
-    image: "assets/cards/elyndra.jpeg",
+    image: "/assets/cards/elyndra.jpeg",
     stats: {
-      attack: 86,
-      defense: 104,
-      speed: 80,
-      intelligence: 94,
-      energy: 98
-    }
+      STR: 86,
+      AGI: 80,
+      VIT: 104,
+      INT: 94,
+      PWR: 98,
+      TOT: 462,
+    },
   },
   {
     id: 4,
@@ -53,15 +53,15 @@ window.cards = [
     title: "The Neural Strike",
     type: "Hero",
     rarity: "Apex",
-    power: 106,
-    image: "assets/cards/kryon.jpeg",
+    image: "/assets/cards/kryon.jpeg",
     stats: {
-      attack: 93,
-      defense: 88,
-      speed: 101,
-      intelligence: 107,
-      energy: 90
-    }
+      STR: 93,
+      AGI: 101,
+      VIT: 88,
+      INT: 107,
+      PWR: 90,
+      TOT: 479,
+    },
   },
   {
     id: 5,
@@ -69,15 +69,15 @@ window.cards = [
     title: "The Iron Executor",
     type: "Villain",
     rarity: "Apex",
-    power: 109,
-    image: "assets/cards/malgrave.jpeg",
+    image: "/assets/cards/malgrave.jpeg",
     stats: {
-      attack: 92,
-      defense: 109,
-      speed: 72,
-      intelligence: 90,
-      energy: 104
-    }
+      STR: 92,
+      AGI: 72,
+      VIT: 109,
+      INT: 90,
+      PWR: 104,
+      TOT: 467,
+    },
   },
   {
     id: 6,
@@ -85,15 +85,15 @@ window.cards = [
     title: "The Mind Veil",
     type: "Villain",
     rarity: "Apex",
-    power: 108,
-    image: "assets/cards/nyxara.jpeg",
+    image: "/assets/cards/nyxara.jpeg",
     stats: {
-      attack: 93,
-      defense: 89,
-      speed: 95,
-      intelligence: 108,
-      energy: 102
-    }
+      STR: 93,
+      AGI: 95,
+      VIT: 89,
+      INT: 108,
+      PWR: 102,
+      TOT: 487,
+    },
   },
   {
     id: 7,
@@ -101,15 +101,15 @@ window.cards = [
     title: "The Warfang",
     type: "Hero",
     rarity: "Apex",
-    power: 105,
-    image: "assets/cards/rakthar.jpeg",
+    image: "/assets/cards/rakthar.jpeg",
     stats: {
-      attack: 99,
-      defense: 94,
-      speed: 87,
-      intelligence: 76,
-      energy: 82
-    }
+      STR: 99,
+      AGI: 87,
+      VIT: 94,
+      INT: 76,
+      PWR: 82,
+      TOT: 438,
+    },
   },
   {
     id: 8,
@@ -117,15 +117,15 @@ window.cards = [
     title: "The Sky Lance",
     type: "Hero",
     rarity: "Mythic",
-    power: 106,
-    image: "assets/cards/seraphyx.jpeg",
+    image: "/assets/cards/seraphyx.jpeg",
     stats: {
-      attack: 106,
-      defense: 96,
-      speed: 91,
-      intelligence: 88,
-      energy: 104
-    }
+      STR: 106,
+      AGI: 91,
+      VIT: 96,
+      INT: 88,
+      PWR: 104,
+      TOT: 485,
+    },
   },
   {
     id: 9,
@@ -133,15 +133,15 @@ window.cards = [
     title: "The Abyss Throne",
     type: "Villain",
     rarity: "Titan",
-    power: 108,
-    image: "assets/cards/thalvor.jpeg",
+    image: "/assets/cards/thalvor.jpeg",
     stats: {
-      attack: 96,
-      defense: 101,
-      speed: 70,
-      intelligence: 89,
-      energy: 104
-    }
+      STR: 96,
+      AGI: 70,
+      VIT: 101,
+      INT: 89,
+      PWR: 104,
+      TOT: 460,
+    },
   },
   {
     id: 10,
@@ -149,15 +149,15 @@ window.cards = [
     title: "The Night Cut",
     type: "Villain",
     rarity: "Apex",
-    power: 105,
-    image: "assets/cards/velkaris.jpeg",
+    image: "/assets/cards/velkaris.jpeg",
     stats: {
-      attack: 99,
-      defense: 82,
-      speed: 105,
-      intelligence: 87,
-      energy: 91
-    }
+      STR: 99,
+      AGI: 105,
+      VIT: 82,
+      INT: 87,
+      PWR: 91,
+      TOT: 464,
+    },
   },
   {
     id: 11,
@@ -165,15 +165,15 @@ window.cards = [
     title: "The Chaos Splinter",
     type: "Villain",
     rarity: "Titan",
-    power: 106,
-    image: "assets/cards/voraxis.jpeg",
+    image: "/assets/cards/voraxis.jpeg",
     stats: {
-      attack: 100,
-      defense: 92,
-      speed: 68,
-      intelligence: 95,
-      energy: 104
-    }
+      STR: 100,
+      AGI: 68,
+      VIT: 92,
+      INT: 95,
+      PWR: 104,
+      TOT: 459,
+    },
   },
   {
     id: 12,
@@ -181,14 +181,14 @@ window.cards = [
     title: "The Biophage",
     type: "Villain",
     rarity: "Legendary",
-    power: 112,
-    image: "assets/cards/xekroth.jpeg",
+    image: "/assets/cards/xekroth.jpeg",
     stats: {
-      attack: 93,
-      defense: 97,
-      speed: 74,
-      intelligence: 101,
-      energy: 109
-    }
-  }
+      STR: 93,
+      AGI: 74,
+      VIT: 97,
+      INT: 101,
+      PWR: 109,
+      TOT: 474,
+    },
+  },
 ];
