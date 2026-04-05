@@ -1,4 +1,4 @@
-const STORAGE_KEY = "tfu-duel-v8-local";
+const STORAGE_KEY = "tfu-duel-v9-local";
 const CARD_POOL = Array.isArray(window.cards) ? window.cards : [];
 
 const state = {
@@ -16,7 +16,11 @@ const state = {
     losses: 0,
     draws: 0
   },
-  log: []
+  log: [],
+  matchMode: "local", // local | linked
+  sharedSeed: null,
+  playerRole: 1, // 1 | 2
+  shareLink: ""
 };
 
 const statLabels = {
@@ -29,15 +33,13 @@ const statLabels = {
 
 const appView = document.getElementById("appView");
 
-function shuffle(array) {
-  const clone = array.slice();
-  for (let i = clone.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = clone[i];
-    clone[i] = clone[j];
-    clone[j] = temp;
-  }
-  return clone;
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function saveState() {
@@ -66,6 +68,10 @@ function loadState() {
       draws: Number(parsed.score && parsed.score.draws) || 0
     };
     state.log = Array.isArray(parsed.log) ? parsed.log : [];
+    state.matchMode = parsed.matchMode || "local";
+    state.sharedSeed = parsed.sharedSeed || null;
+    state.playerRole = parsed.playerRole === 2 ? 2 : 1;
+    state.shareLink = parsed.shareLink || "";
     return true;
   } catch (error) {
     console.error("Could not load saved state:", error);
@@ -73,13 +79,115 @@ function loadState() {
   }
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function stringToSeed(str) {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    hash ^= str.charCodeAt(i);
+    hash +=
+      (hash << 1) +
+      (hash << 4) +
+      (hash << 7) +
+      (hash << 8) +
+      (hash << 24);
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function seededRandomGenerator(seed) {
+  let value = seed % 2147483647;
+  if (value <= 0) value += 2147483646;
+
+  return function () {
+    value = (value * 16807) % 2147483647;
+    return (value - 1) / 2147483646;
+  };
+}
+
+function seededShuffle(array, seedString) {
+  const clone = array.slice();
+  const rng = seededRandomGenerator(stringToSeed(seedString));
+
+  for (let i = clone.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const temp = clone[i];
+    clone[i] = clone[j];
+    clone[j] = temp;
+  }
+
+  return clone;
+}
+
+function localShuffle(array) {
+  const clone = array.slice();
+  for (let i = clone.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = clone[i];
+    clone[i] = clone[j];
+    clone[j] = temp;
+  }
+  return clone;
+}
+
+function splitDecksFromSeed(seedString) {
+  const shuffled = seededShuffle(CARD_POOL, seedString);
+  const player1 = [];
+  const player2 = [];
+
+  for (let i = 0; i < shuffled.length; i += 1) {
+    if (i % 2 === 0) {
+      player1.push(shuffled[i]);
+    } else {
+      player2.push(shuffled[i]);
+    }
+  }
+
+  return {
+    player1,
+    player2
+  };
+}
+
+function buildShareLink(seedString) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("mode", "linked");
+  url.searchParams.set("seed", seedString);
+  url.searchParams.set("player", "2");
+  return url.toString();
+}
+
+function parseUrlMatch() {
+  const url = new URL(window.location.href);
+  const mode = url.searchParams.get("mode");
+  const seed = url.searchParams.get("seed");
+  const player = url.searchParams.get("player");
+
+  if (mode !== "linked" || !seed) return false;
+
+  const split = splitDecksFromSeed(seed);
+  const role = player === "2" ? 2 : 1;
+
+  state.matchMode = "linked";
+  state.sharedSeed = seed;
+  state.playerRole = role;
+  state.shareLink = role === 1 ? buildShareLink(seed) : "";
+  state.deck = role === 1 ? split.player1 : split.player2;
+  state.deckSize = state.deck.length;
+  state.currentIndex = 0;
+  state.selectedStat = null;
+  state.roundResolved = false;
+  state.roundResult = null;
+  state.finished = false;
+  state.menuOpen = false;
+  state.imageOpen = false;
+  state.score = { wins: 0, losses: 0, draws: 0 };
+  state.log = [
+    "Linked match loaded.",
+    "Seed: " + seed,
+    "You are Player " + role + "."
+  ];
+
+  saveState();
+  return true;
 }
 
 function toggleMenu(forceValue) {
@@ -117,13 +225,24 @@ function fullReset() {
   state.finished = false;
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.log = [];
+  state.matchMode = "local";
+  state.sharedSeed = null;
+  state.playerRole = 1;
+  state.shareLink = "";
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("mode");
+  url.searchParams.delete("seed");
+  url.searchParams.delete("player");
+  window.history.replaceState({}, "", url.toString());
+
   saveState();
   render();
 }
 
-function createNewMatch(keepScore) {
+function createLocalMatch(keepScore) {
   const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARD_POOL.length));
-  state.deck = shuffle(CARD_POOL).slice(0, safeDeckSize);
+  state.deck = localShuffle(CARD_POOL).slice(0, safeDeckSize);
   state.currentIndex = 0;
   state.selectedStat = null;
   state.roundResolved = false;
@@ -131,15 +250,85 @@ function createNewMatch(keepScore) {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
-  state.log = ["New match started. " + safeDeckSize + " cards shuffled locally."];
+  state.matchMode = "local";
+  state.sharedSeed = null;
+  state.playerRole = 1;
+  state.shareLink = "";
+  state.log = ["New local match started. " + safeDeckSize + " cards shuffled locally."];
 
   if (!keepScore) {
     state.score = { wins: 0, losses: 0, draws: 0 };
     state.log.push("Score reset.");
   }
 
+  const url = new URL(window.location.href);
+  url.searchParams.delete("mode");
+  url.searchParams.delete("seed");
+  url.searchParams.delete("player");
+  window.history.replaceState({}, "", url.toString());
+
   saveState();
   render();
+}
+
+function createLinkedMatch(keepScore) {
+  const seedString =
+    Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+
+  const split = splitDecksFromSeed(seedString);
+
+  state.matchMode = "linked";
+  state.sharedSeed = seedString;
+  state.playerRole = 1;
+  state.shareLink = buildShareLink(seedString);
+  state.deck = split.player1;
+  state.deckSize = state.deck.length;
+  state.currentIndex = 0;
+  state.selectedStat = null;
+  state.roundResolved = false;
+  state.roundResult = null;
+  state.finished = false;
+  state.menuOpen = false;
+  state.imageOpen = false;
+  state.log = [
+    "Linked match created.",
+    "You are Player 1.",
+    "Share the generated link with Player 2."
+  ];
+
+  if (!keepScore) {
+    state.score = { wins: 0, losses: 0, draws: 0 };
+    state.log.push("Score reset.");
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("mode", "linked");
+  url.searchParams.set("seed", seedString);
+  url.searchParams.set("player", "1");
+  window.history.replaceState({}, "", url.toString());
+
+  saveState();
+  render();
+}
+
+function copyShareLink() {
+  if (!state.shareLink) return;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(state.shareLink).then(function () {
+      state.log.push("Share link copied.");
+      saveState();
+      render();
+    }).catch(function () {
+      promptFallback();
+    });
+  } else {
+    promptFallback();
+  }
+
+  function promptFallback() {
+    window.prompt("Copy this link and send it to Player 2:", state.shareLink);
+  }
 }
 
 function getCurrentCard() {
@@ -251,7 +440,7 @@ function getRarityClass(rarity) {
 }
 
 function getStatusText() {
-  if (state.finished) return "Match finished. Start a new match for a fresh local shuffle.";
+  if (state.finished) return "Match finished. Start a new match for a fresh setup.";
   if (!state.selectedStat) return "Pick one stat, compare it in real life, then confirm Win, Lose or Draw.";
   if (!state.roundResolved) return "Stat selected. Compare values now and record the result.";
   return "Round resolved. Move to the next card.";
@@ -283,17 +472,17 @@ function buildMenuOverlay() {
         <div class="menu-panel-header">
           <div>
             <p class="section-eyebrow">TFU Duel Menu</p>
-            <h2 class="setup-title">Quick Match Setup</h2>
+            <h2 class="setup-title">Match Setup</h2>
           </div>
           <button id="closeMenuBtn" class="menu-close-btn" type="button">✕</button>
         </div>
 
         <p class="setup-copy">
-          Local duel mode. One device per player. Pick a stat, compare it in real life, then record the result.
+          Use Local Match for one-device play. Use Linked Match to generate a shareable link for Player 2.
         </p>
 
         <div class="field-group">
-          <label for="deckSizeSelect" class="field-label">Deck Size</label>
+          <label for="deckSizeSelect" class="field-label">Deck Size (Local Mode)</label>
           <select id="deckSizeSelect" class="field-control">
             ${allowedSizes
               .map(function (size) {
@@ -304,10 +493,22 @@ function buildMenuOverlay() {
         </div>
 
         <div class="setup-actions">
-          <button id="startMatchBtn" class="btn btn-primary" type="button">Start Match</button>
-          <button id="menuNewMatchBtn" class="btn btn-secondary" type="button">New Match</button>
+          <button id="startLocalMatchBtn" class="btn btn-primary" type="button">Start Local Match</button>
+          <button id="startLinkedMatchBtn" class="btn btn-secondary" type="button">Create Linked Match</button>
           <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
         </div>
+
+        ${
+          state.matchMode === "linked" && state.playerRole === 1 && state.shareLink
+            ? `
+              <div class="panel-link-box">
+                <p class="panel-label">Player 2 Invite Link</p>
+                <div class="share-link-preview">${escapeHtml(state.shareLink)}</div>
+                <button id="copyShareLinkBtn" class="btn btn-primary" type="button">Copy Link</button>
+              </div>
+            `
+            : ""
+        }
       </section>
     </div>
   `;
@@ -326,6 +527,34 @@ function buildImageOverlay(card) {
   `;
 }
 
+function buildLinkedInfoBar() {
+  if (state.matchMode !== "linked") return "";
+
+  return `
+    <section class="panel linked-info-bar">
+      <div class="linked-info-grid">
+        <div>
+          <span class="hud-label">Mode</span>
+          <strong>Linked Match</strong>
+        </div>
+        <div>
+          <span class="hud-label">Player</span>
+          <strong>P${state.playerRole}</strong>
+        </div>
+        <div>
+          <span class="hud-label">Seed</span>
+          <strong>${escapeHtml(state.sharedSeed || "—")}</strong>
+        </div>
+      </div>
+      ${
+        state.playerRole === 1 && state.shareLink
+          ? `<button id="copyShareLinkInlineBtn" class="btn btn-primary" type="button">Copy Player 2 Link</button>`
+          : ""
+      }
+    </section>
+  `;
+}
+
 function buildGameContent() {
   const card = getCurrentCard();
   const totalCards = state.deck.length;
@@ -335,6 +564,7 @@ function buildGameContent() {
 
   if (!card) {
     return `
+      ${buildLinkedInfoBar()}
       <section class="panel">
         <h2 class="setup-title">No Active Match</h2>
         <p class="setup-copy">Open the menu and start a match.</p>
@@ -343,6 +573,8 @@ function buildGameContent() {
   }
 
   return `
+    ${buildLinkedInfoBar()}
+
     <section class="hud-grid micro-hud">
       <article class="hud-card">
         <span class="hud-label">Round</span>
@@ -484,12 +716,10 @@ function buildGameContent() {
 }
 
 function buildApp() {
-  const card = getCurrentCard();
-
   return `
     <section class="screen">
       ${buildMenuOverlay()}
-      ${buildImageOverlay(card)}
+      ${buildImageOverlay(getCurrentCard())}
 
       <section class="micro-topbar">
         <button id="menuToggleBtn" class="micro-btn" type="button">☰ Menu</button>
@@ -506,9 +736,9 @@ function bindApp() {
   const menuToggleBtn = document.getElementById("menuToggleBtn");
   const closeMenuBtn = document.getElementById("closeMenuBtn");
   const quickNewMatchBtn = document.getElementById("quickNewMatchBtn");
-  const menuNewMatchBtn = document.getElementById("menuNewMatchBtn");
   const deckSizeSelect = document.getElementById("deckSizeSelect");
-  const startMatchBtn = document.getElementById("startMatchBtn");
+  const startLocalMatchBtn = document.getElementById("startLocalMatchBtn");
+  const startLinkedMatchBtn = document.getElementById("startLinkedMatchBtn");
   const resetAllBtn = document.getElementById("resetAllBtn");
   const winBtn = document.getElementById("winBtn");
   const drawBtn = document.getElementById("drawBtn");
@@ -518,13 +748,15 @@ function bindApp() {
   const openImageBtn = document.getElementById("openImageBtn");
   const closeImageBtn = document.getElementById("closeImageBtn");
   const imageOverlay = document.getElementById("imageOverlay");
+  const copyShareLinkBtn = document.getElementById("copyShareLinkBtn");
+  const copyShareLinkInlineBtn = document.getElementById("copyShareLinkInlineBtn");
 
   if (menuToggleBtn) menuToggleBtn.addEventListener("click", function () { toggleMenu(); });
   if (closeMenuBtn) closeMenuBtn.addEventListener("click", function () { toggleMenu(false); });
-  if (quickNewMatchBtn) quickNewMatchBtn.addEventListener("click", function () { createNewMatch(true); });
-  if (menuNewMatchBtn) menuNewMatchBtn.addEventListener("click", function () { createNewMatch(true); });
+  if (quickNewMatchBtn) quickNewMatchBtn.addEventListener("click", function () { createLocalMatch(true); });
   if (deckSizeSelect) deckSizeSelect.addEventListener("change", function (event) { selectDeckSize(event.target.value); });
-  if (startMatchBtn) startMatchBtn.addEventListener("click", function () { createNewMatch(true); });
+  if (startLocalMatchBtn) startLocalMatchBtn.addEventListener("click", function () { createLocalMatch(true); });
+  if (startLinkedMatchBtn) startLinkedMatchBtn.addEventListener("click", function () { createLinkedMatch(false); });
   if (resetAllBtn) resetAllBtn.addEventListener("click", fullReset);
   if (winBtn) winBtn.addEventListener("click", function () { resolveRound("win"); });
   if (drawBtn) drawBtn.addEventListener("click", function () { resolveRound("draw"); });
@@ -533,6 +765,8 @@ function bindApp() {
   if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
   if (openImageBtn) openImageBtn.addEventListener("click", openImage);
   if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
+  if (copyShareLinkBtn) copyShareLinkBtn.addEventListener("click", copyShareLink);
+  if (copyShareLinkInlineBtn) copyShareLinkInlineBtn.addEventListener("click", copyShareLink);
 
   if (imageOverlay) {
     imageOverlay.addEventListener("click", function (event) {
@@ -556,5 +790,8 @@ function render() {
   bindApp();
 }
 
-loadState();
+const loadedFromUrl = parseUrlMatch();
+if (!loadedFromUrl) {
+  loadState();
+}
 render();
