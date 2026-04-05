@@ -125,7 +125,7 @@ const cards = [
     type: "Fallen",
     rarity: "Fallen",
     power: 114,
-    image: "/assets/cards/sovnaith.jpeg",
+    image: "/assets/cards/sovinaith.jpeg",
     stats: {
       STR: 94,
       AGI: 102,
