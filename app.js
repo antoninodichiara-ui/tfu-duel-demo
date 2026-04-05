@@ -1,4 +1,4 @@
-const STORAGE_KEY = "tfu-duel-v12-local";
+const STORAGE_KEY = "tfu-duel-v13-local";
 const CARD_POOL = Array.isArray(window.cards)
   ? window.cards
   : (typeof cards !== "undefined" ? cards : []);
@@ -341,12 +341,6 @@ function getCurrentCard() {
   return state.deck[state.currentIndex] || null;
 }
 
-function getSelectedValue() {
-  const card = getCurrentCard();
-  if (!card || !state.selectedStat) return null;
-  return card.stats[state.selectedStat];
-}
-
 function selectDeckSize(value) {
   const nextSize = Number(value);
   if (!isNaN(nextSize)) {
@@ -440,19 +434,15 @@ function nextCard() {
 }
 
 function getRarityClass(rarity) {
-  const safe = String(rarity || "").toLowerCase();
-  if (safe === "mythic") return "rarity-mythic";
-  if (safe === "legendary") return "rarity-legendary";
-  if (safe === "titan") return "rarity-titan";
-  if (safe === "apex") return "rarity-apex";
-  return "rarity-default";
+  const safe = String(rarity || "").toLowerCase().replace(/\s+/g, "-").replace(/'/g, "");
+  return "rarity-" + safe;
 }
 
 function getStatusText() {
-  if (state.finished) return "Match finished. Start a new match for a fresh setup.";
-  if (!state.selectedStat) return "Choose one stat directly from the side buttons.";
-  if (!state.roundResolved) return "Compare values now and confirm the round result.";
-  return "Round resolved. Move to the next card.";
+  if (state.finished) return "Match finished.";
+  if (!state.selectedStat) return "Choose a stat.";
+  if (!state.roundResolved) return "Confirm the round result.";
+  return "Round resolved.";
 }
 
 function getResultBadge() {
@@ -471,7 +461,7 @@ function getResultBadge() {
 function buildMenuOverlay() {
   if (!state.menuOpen) return "";
 
-  const allowedSizes = [4, 6, 8, 10, 12].filter(function (size) {
+  const allowedSizes = [4, 6, 8, 10, 12, 16, 20].filter(function (size) {
     return size <= CARD_POOL.length;
   });
 
@@ -565,44 +555,46 @@ function buildSideButton(statKey, side, isSelected) {
   `;
 }
 
-function buildBottomControls(totalCards) {
+function buildBottomFloatingButtons() {
+  return `
+    <div class="bottom-float-actions">
+      <button id="winBtn" class="float-action action-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>WIN</button>
+      <button id="drawBtn" class="float-action action-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>DRAW</button>
+      <button id="loseBtn" class="float-action action-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>LOSE</button>
+      <button id="nextCardBtn" class="float-action action-next" type="button" ${!state.roundResolved ? "disabled" : ""}>NEXT</button>
+    </div>
+  `;
+}
+
+function buildCompactHud(totalCards) {
   const roundNumber = state.finished ? totalCards : totalCards ? state.currentIndex + 1 : 0;
 
   return `
-    <section class="bottom-compact-bar in-card-actions">
-      <div class="bottom-status-line">
-        <div class="bottom-mini-box">
-          <span class="hud-label">Round</span>
-          <strong>${roundNumber} / ${totalCards || state.deckSize}</strong>
-        </div>
-
-        <div class="bottom-mini-box">
-          <span class="hud-label">Score</span>
-          <strong>${state.score.wins} / ${state.score.losses} / ${state.score.draws}</strong>
-          <small>W / L / D</small>
-        </div>
-
-        <div class="bottom-mini-box">
-          <span class="hud-label">Selected</span>
-          <strong>${state.selectedStat || "—"}</strong>
-        </div>
-
-        <div class="bottom-badge-box">
-          ${getResultBadge()}
-        </div>
+    <section class="compact-hud-bar">
+      <div class="hud-chip">
+        <span class="hud-label">Round</span>
+        <strong>${roundNumber}/${totalCards || state.deckSize}</strong>
       </div>
-
-      <div class="battle-action-row compact">
-        <button id="winBtn" class="btn btn-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Win</button>
-        <button id="drawBtn" class="btn btn-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Draw</button>
-        <button id="loseBtn" class="btn btn-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>Lose</button>
-        <button id="nextCardBtn" class="btn btn-primary" type="button" ${!state.roundResolved ? "disabled" : ""}>Next</button>
+      <div class="hud-chip">
+        <span class="hud-label">Score</span>
+        <strong>${state.score.wins}/${state.score.losses}/${state.score.draws}</strong>
       </div>
-
-      <div class="bottom-helper-line">
-        <span>${getStatusText()}</span>
-        <button id="resetScoreBtn" class="btn btn-secondary small" type="button">Reset</button>
+      <div class="hud-chip">
+        <span class="hud-label">Selected</span>
+        <strong>${state.selectedStat || "—"}</strong>
       </div>
+      <div class="hud-chip hud-chip-status">
+        ${getResultBadge()}
+      </div>
+    </section>
+  `;
+}
+
+function buildFooterInfo() {
+  return `
+    <section class="footer-info-bar">
+      <div class="footer-status-text">${getStatusText()}</div>
+      <button id="resetScoreBtn" class="btn btn-secondary small" type="button">Reset Score</button>
     </section>
   `;
 }
@@ -650,6 +642,7 @@ function buildGameContent() {
             <img class="main-card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
             <div class="main-role-badge">${escapeHtml(card.type)}</div>
             <div class="main-zoom-hint">Tap to expand</div>
+            ${buildBottomFloatingButtons()}
           </button>
         </div>
 
@@ -662,7 +655,8 @@ function buildGameContent() {
         </div>
       </div>
 
-      ${buildBottomControls(totalCards)}
+      ${buildCompactHud(totalCards)}
+      ${buildFooterInfo()}
     </section>
   `;
 }
@@ -710,10 +704,10 @@ function bindApp() {
   if (startLocalMatchBtn) startLocalMatchBtn.addEventListener("click", function () { createLocalMatch(true); });
   if (startLinkedMatchBtn) startLinkedMatchBtn.addEventListener("click", function () { createLinkedMatch(false); });
   if (resetAllBtn) resetAllBtn.addEventListener("click", fullReset);
-  if (winBtn) winBtn.addEventListener("click", function () { resolveRound("win"); });
-  if (drawBtn) drawBtn.addEventListener("click", function () { resolveRound("draw"); });
-  if (loseBtn) loseBtn.addEventListener("click", function () { resolveRound("lose"); });
-  if (nextCardBtn) nextCardBtn.addEventListener("click", nextCard);
+  if (winBtn) winBtn.addEventListener("click", function (event) { event.stopPropagation(); resolveRound("win"); });
+  if (drawBtn) drawBtn.addEventListener("click", function (event) { event.stopPropagation(); resolveRound("draw"); });
+  if (loseBtn) loseBtn.addEventListener("click", function (event) { event.stopPropagation(); resolveRound("lose"); });
+  if (nextCardBtn) nextCardBtn.addEventListener("click", function (event) { event.stopPropagation(); nextCard(); });
   if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
   if (openImageBtn) openImageBtn.addEventListener("click", openImage);
   if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
@@ -730,7 +724,8 @@ function bindApp() {
 
   const statButtons = document.querySelectorAll("[data-select-stat]");
   statButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
+    button.addEventListener("click", function (event) {
+      event.stopPropagation();
       selectStat(button.getAttribute("data-select-stat"));
     });
   });
