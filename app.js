@@ -1,744 +1,885 @@
-const STORAGE_KEY = "tfu-duel-v13-local";
-const CARD_POOL = Array.isArray(window.cards)
-  ? window.cards
-  : (typeof cards !== "undefined" ? cards : []);
-
-const state = {
-  menuOpen: false,
-  imageOpen: false,
-  deckSize: 8,
-  deck: [],
-  currentIndex: 0,
-  selectedStat: null,
-  roundResolved: false,
-  roundResult: null,
-  finished: false,
-  score: {
-    wins: 0,
-    losses: 0,
-    draws: 0
-  },
-  log: [],
-  matchMode: "local",
-  sharedSeed: null,
-  playerRole: 1,
-  shareLink: ""
-};
-
-const statLabels = {
-  STR: "Strength",
-  AGI: "Agility",
-  VIT: "Vitality",
-  INT: "Intelligence",
-  PWR: "Power",
-  TOT: "Total"
-};
-
-const leftStats = ["STR", "AGI", "VIT"];
-const rightStats = ["INT", "PWR", "TOT"];
-
-const appView = document.getElementById("appView");
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+:root {
+  --bg-1: #050816;
+  --bg-2: #09123a;
+  --panel: rgba(18, 28, 78, 0.7);
+  --line: rgba(123, 149, 255, 0.16);
+  --line-strong: rgba(160, 183, 255, 0.24);
+  --text: #eef3ff;
+  --muted: #aeb8dd;
+  --gold: #f1d68a;
+  --blue: #87d9ff;
+  --win: #77f0b0;
+  --draw: #f0d78a;
+  --lose: #f29ab1;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
+  --safe-w: min(100%, 980px);
+  --card-max: min(100vw - 72px, 560px);
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+* {
+  box-sizing: border-box;
 }
 
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return false;
-
-  try {
-    const parsed = JSON.parse(raw);
-
-    state.menuOpen = typeof parsed.menuOpen === "boolean" ? parsed.menuOpen : false;
-    state.imageOpen = false;
-    state.deckSize = Number(parsed.deckSize) || 8;
-    state.deck = Array.isArray(parsed.deck) ? parsed.deck : [];
-    state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
-    state.selectedStat = parsed.selectedStat || null;
-    state.roundResolved = Boolean(parsed.roundResolved);
-    state.roundResult = parsed.roundResult || null;
-    state.finished = Boolean(parsed.finished);
-    state.score = {
-      wins: Number(parsed.score && parsed.score.wins) || 0,
-      losses: Number(parsed.score && parsed.score.losses) || 0,
-      draws: Number(parsed.score && parsed.score.draws) || 0
-    };
-    state.log = Array.isArray(parsed.log) ? parsed.log : [];
-    state.matchMode = parsed.matchMode || "local";
-    state.sharedSeed = parsed.sharedSeed || null;
-    state.playerRole = parsed.playerRole === 2 ? 2 : 1;
-    state.shareLink = parsed.shareLink || "";
-    return true;
-  } catch (error) {
-    console.error("Could not load saved state:", error);
-    return false;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: "Inter", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 12%, rgba(78, 90, 212, 0.28), transparent 24%),
+    radial-gradient(circle at 50% 100%, rgba(25, 155, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, #020612 0%, #030a22 42%, #020816 100%);
+  overflow-x: hidden;
 }
 
-function stringToSeed(str) {
-  let hash = 2166136261;
-  for (let i = 0; i < str.length; i += 1) {
-    hash ^= str.charCodeAt(i);
-    hash +=
-      (hash << 1) +
-      (hash << 4) +
-      (hash << 7) +
-      (hash << 8) +
-      (hash << 24);
-  }
-  return Math.abs(hash >>> 0);
+body {
+  min-height: 100vh;
 }
 
-function seededRandomGenerator(seed) {
-  let value = seed % 2147483647;
-  if (value <= 0) value += 2147483646;
-
-  return function () {
-    value = (value * 16807) % 2147483647;
-    return (value - 1) / 2147483646;
-  };
+button,
+select,
+input {
+  font: inherit;
 }
 
-function seededShuffle(array, seedString) {
-  const clone = array.slice();
-  const rng = seededRandomGenerator(stringToSeed(seedString));
-
-  for (let i = clone.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    const temp = clone[i];
-    clone[i] = clone[j];
-    clone[j] = temp;
-  }
-
-  return clone;
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
 }
 
-function localShuffle(array) {
-  const clone = array.slice();
-  for (let i = clone.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = clone[i];
-    clone[i] = clone[j];
-    clone[j] = temp;
-  }
-  return clone;
+.app-shell {
+  width: 100%;
+  min-height: 100vh;
+  padding: 10px 10px 24px;
 }
 
-function splitDecksFromSeed(seedString) {
-  const shuffled = seededShuffle(CARD_POOL, seedString);
-  const player1 = [];
-  const player2 = [];
-
-  for (let i = 0; i < shuffled.length; i += 1) {
-    if (i % 2 === 0) {
-      player1.push(shuffled[i]);
-    } else {
-      player2.push(shuffled[i]);
-    }
-  }
-
-  return {
-    player1,
-    player2
-  };
+.topbar {
+  display: none !important;
 }
 
-function buildShareLink(seedString) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("mode", "linked");
-  url.searchParams.set("seed", seedString);
-  url.searchParams.set("player", "2");
-  return url.toString();
+#appView {
+  width: 100%;
 }
 
-function parseUrlMatch() {
-  const url = new URL(window.location.href);
-  const mode = url.searchParams.get("mode");
-  const seed = url.searchParams.get("seed");
-  const player = url.searchParams.get("player");
-
-  if (mode !== "linked" || !seed) return false;
-
-  const split = splitDecksFromSeed(seed);
-  const role = player === "2" ? 2 : 1;
-
-  state.matchMode = "linked";
-  state.sharedSeed = seed;
-  state.playerRole = role;
-  state.shareLink = role === 1 ? buildShareLink(seed) : "";
-  state.deck = role === 1 ? split.player1 : split.player2;
-  state.deckSize = state.deck.length;
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.menuOpen = false;
-  state.imageOpen = false;
-  state.score = { wins: 0, losses: 0, draws: 0 };
-  state.log = [
-    "Linked match loaded.",
-    "Seed: " + seed,
-    "You are Player " + role + "."
-  ];
-
-  saveState();
-  return true;
+.screen {
+  width: var(--safe-w);
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+  position: relative;
 }
 
-function toggleMenu(forceValue) {
-  state.menuOpen = typeof forceValue === "boolean" ? forceValue : !state.menuOpen;
-  saveState();
-  render();
-}
-
-function openImage() {
-  state.imageOpen = true;
-  render();
-}
-
-function closeImage() {
-  state.imageOpen = false;
-  render();
-}
-
-function resetScoreOnly() {
-  state.score = { wins: 0, losses: 0, draws: 0 };
-  state.log.push("Score reset.");
-  saveState();
-  render();
-}
-
-function fullReset() {
-  state.menuOpen = true;
-  state.imageOpen = false;
-  state.deckSize = 8;
-  state.deck = [];
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.score = { wins: 0, losses: 0, draws: 0 };
-  state.log = [];
-  state.matchMode = "local";
-  state.sharedSeed = null;
-  state.playerRole = 1;
-  state.shareLink = "";
-
-  const url = new URL(window.location.href);
-  url.searchParams.delete("mode");
-  url.searchParams.delete("seed");
-  url.searchParams.delete("player");
-  window.history.replaceState({}, "", url.toString());
-
-  saveState();
-  render();
-}
-
-function createLocalMatch(keepScore) {
-  const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARD_POOL.length));
-  state.deck = localShuffle(CARD_POOL).slice(0, safeDeckSize);
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.menuOpen = false;
-  state.imageOpen = false;
-  state.matchMode = "local";
-  state.sharedSeed = null;
-  state.playerRole = 1;
-  state.shareLink = "";
-  state.log = ["New local match started. " + safeDeckSize + " cards shuffled locally."];
-
-  if (!keepScore) {
-    state.score = { wins: 0, losses: 0, draws: 0 };
-    state.log.push("Score reset.");
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.delete("mode");
-  url.searchParams.delete("seed");
-  url.searchParams.delete("player");
-  window.history.replaceState({}, "", url.toString());
-
-  saveState();
-  render();
-}
-
-function createLinkedMatch(keepScore) {
-  const seedString =
-    Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
-
-  const split = splitDecksFromSeed(seedString);
-
-  state.matchMode = "linked";
-  state.sharedSeed = seedString;
-  state.playerRole = 1;
-  state.shareLink = buildShareLink(seedString);
-  state.deck = split.player1;
-  state.deckSize = state.deck.length;
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.menuOpen = false;
-  state.imageOpen = false;
-  state.log = [
-    "Linked match created.",
-    "You are Player 1.",
-    "Share the generated link with Player 2."
-  ];
-
-  if (!keepScore) {
-    state.score = { wins: 0, losses: 0, draws: 0 };
-    state.log.push("Score reset.");
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("mode", "linked");
-  url.searchParams.set("seed", seedString);
-  url.searchParams.set("player", "1");
-  window.history.replaceState({}, "", url.toString());
-
-  saveState();
-  render();
-}
-
-function copyShareLink() {
-  if (!state.shareLink) return;
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(state.shareLink).then(function () {
-      state.log.push("Share link copied.");
-      saveState();
-      render();
-    }).catch(function () {
-      promptFallback();
-    });
-  } else {
-    promptFallback();
-  }
-
-  function promptFallback() {
-    window.prompt("Copy this link and send it to Player 2:", state.shareLink);
-  }
-}
-
-function getCurrentCard() {
-  return state.deck[state.currentIndex] || null;
-}
-
-function selectDeckSize(value) {
-  const nextSize = Number(value);
-  if (!isNaN(nextSize)) {
-    state.deckSize = Math.max(4, Math.min(nextSize, CARD_POOL.length));
-    saveState();
-  }
-}
-
-function selectStat(statKey) {
-  if (state.roundResolved || state.finished) return;
-
-  const card = getCurrentCard();
-  if (!card) return;
-  if (!(statKey in card.stats)) return;
-
-  state.selectedStat = statKey;
-  state.log.push(
-    "Round " +
-      (state.currentIndex + 1) +
-      ": " +
-      card.name +
-      " selected " +
-      statKey +
-      " (" +
-      card.stats[statKey] +
-      ")."
+.ultra-thin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: 84px 1fr 84px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px 6px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 13, 35, 0.92),
+    rgba(8, 13, 35, 0.62)
   );
-
-  saveState();
-  render();
+  border-bottom: 1px solid rgba(118, 142, 255, 0.08);
 }
 
-function resolveRound(result) {
-  if (!state.selectedStat || state.roundResolved || state.finished) return;
-  const card = getCurrentCard();
-  if (!card) return;
-
-  if (result === "win") state.score.wins += 1;
-  if (result === "lose") state.score.losses += 1;
-  if (result === "draw") state.score.draws += 1;
-
-  state.roundResolved = true;
-  state.roundResult = result;
-
-  state.log.push(
-    "Round " +
-      (state.currentIndex + 1) +
-      ": " +
-      card.name +
-      " -> " +
-      state.selectedStat +
-      " " +
-      card.stats[state.selectedStat] +
-      " -> " +
-      result.toUpperCase() +
-      "."
-  );
-
-  saveState();
-  render();
+.micro-title {
+  text-align: center;
+  font-size: clamp(1.2rem, 2.8vw, 1.7rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
 }
 
-function nextCard() {
-  if (!state.roundResolved || state.finished) return;
+.micro-btn {
+  min-height: 54px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, rgba(14, 21, 58, 0.94), rgba(9, 14, 38, 0.92));
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer;
+}
 
-  const isLastCard = state.currentIndex >= state.deck.length - 1;
+.micro-btn.alt {
+  font-size: 0.98rem;
+}
 
-  if (isLastCard) {
-    state.finished = true;
-    state.log.push(
-      "Match finished. Final score: " +
-        state.score.wins +
-        "W / " +
-        state.score.losses +
-        "L / " +
-        state.score.draws +
-        "D."
-    );
-    saveState();
-    render();
-    return;
+.linked-mini-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(19, 30, 84, 0.62), rgba(9, 16, 48, 0.68));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.linked-mini-bar div,
+.mini-link-btn {
+  min-height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(136, 156, 255, 0.12);
+  background: rgba(9, 15, 44, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: var(--text);
+}
+
+.linked-mini-bar span {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.linked-mini-bar strong {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.mini-link-btn {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.arena-shell {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 8px 0 20px;
+}
+
+.arena-top-meta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.arena-name-block {
+  display: grid;
+  gap: 4px;
+}
+
+.arena-card-name {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.arena-card-title {
+  font-size: clamp(0.96rem, 2.2vw, 1.1rem);
+  color: var(--muted);
+  line-height: 1.1;
+}
+
+.arena-top-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.rarity-chip {
+  padding: 12px 16px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  white-space: nowrap;
+}
+
+.rarity-mythic { color: #ffd7a6; background: rgba(255, 170, 86, 0.12); }
+.rarity-legendary { color: #87d9ff; background: rgba(87, 179, 255, 0.12); }
+.rarity-apex { color: #ffc6a0; background: rgba(255, 154, 82, 0.12); }
+.rarity-titan { color: #d6c0ff; background: rgba(169, 122, 255, 0.12); }
+.rarity-default,
+.rarity-rogue,
+.rarity-warlock,
+.rarity-warlord,
+.rarity-fallen,
+.rarity-divine,
+.rarity-hero,
+.rarity-villain,
+.rarity-elite,
+.rarity-necromancer,
+.rarity-spellcaster,
+.rarity-anti-hero,
+.rarity-berserker {
+  color: #f3d3b2;
+  background: rgba(255,255,255,0.06);
+}
+
+.card-stage {
+  position: relative;
+  width: 100%;
+  min-height: 72vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0 0;
+}
+
+.hero-card-zone {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.main-card-shell {
+  position: relative;
+  width: var(--card-max);
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.main-card-image {
+  width: 100%;
+  display: block;
+  border-radius: 26px;
+  object-fit: contain;
+  box-shadow:
+    0 28px 80px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.main-role-badge {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  min-width: 120px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: rgba(11, 17, 48, 0.84);
+  border: 1px solid rgba(150, 170, 255, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.main-zoom-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: rgba(11, 17, 48, 0.68);
+  border: 1px solid rgba(150, 170, 255, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.left-stick-column,
+.right-stick-column {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.left-stick-column { left: 0; }
+.right-stick-column { right: 0; }
+
+.side-stick {
+  pointer-events: auto;
+  width: 78px;
+  min-height: 62px;
+  border: 1px solid rgba(186, 204, 255, 0.16);
+  background: rgba(123, 91, 82, 0.88);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.24);
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  cursor: pointer;
+}
+
+.side-stick:hover {
+  transform: scale(1.03);
+  filter: brightness(1.05);
+}
+
+.side-stick.left {
+  border-radius: 0 999px 999px 0;
+  padding-left: 14px;
+}
+
+.side-stick.right {
+  border-radius: 999px 0 0 999px;
+  padding-right: 14px;
+}
+
+.side-stick.selected {
+  background: linear-gradient(180deg, #708f85 0%, #4f6f66 100%);
+  border: 2px solid rgba(170, 255, 210, 0.42);
+  color: #f6fff9;
+  box-shadow:
+    0 0 0 1px rgba(180, 255, 220, 0.18) inset,
+    0 0 20px rgba(120, 255, 190, 0.18),
+    0 0 34px rgba(120, 255, 190, 0.08),
+    0 10px 28px rgba(0, 0, 0, 0.35);
+  transform: scale(1.04);
+}
+
+.side-stick:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.stick-short {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.bottom-float-actions {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  z-index: 6;
+}
+
+.float-action {
+  min-height: 66px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 204, 255, 0.18);
+  color: #f6fbff;
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+}
+
+.float-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.float-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.action-win {
+  background: rgba(57, 126, 108, 0.88);
+}
+
+.action-draw {
+  background: rgba(143, 127, 85, 0.9);
+}
+
+.action-lose {
+  background: rgba(127, 81, 108, 0.9);
+}
+
+.action-next {
+  background: rgba(78, 88, 129, 0.92);
+}
+
+.compact-hud-bar {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.hud-chip {
+  min-height: 78px;
+  border-radius: 18px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(140, 160, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+
+.hud-chip-status {
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.hud-chip strong {
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badge-neutral { background: rgba(150, 164, 214, 0.14); color: #d7defa; }
+.badge-win { background: rgba(94, 230, 167, 0.18); color: var(--win); }
+.badge-draw { background: rgba(241, 214, 138, 0.18); color: var(--draw); }
+.badge-lose { background: rgba(242, 154, 177, 0.18); color: var(--lose); }
+
+.footer-info-bar {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(9, 15, 48, 0.88), rgba(7, 12, 38, 0.84));
+  border: 1px solid rgba(126, 149, 255, 0.12);
+  box-shadow: var(--shadow);
+  color: var(--muted);
+}
+
+.footer-status-text {
+  font-size: 0.96rem;
+}
+
+.btn {
+  min-height: 58px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  padding: 0 18px;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn.small {
+  min-height: 48px;
+  padding: 0 16px;
+  font-size: 0.92rem;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #ffe79f, #f2d37d);
+  color: #1f2230;
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border-color: rgba(157, 176, 255, 0.18);
+}
+
+.btn-danger {
+  background: rgba(255, 95, 122, 0.14);
+  color: #ffb2c0;
+  border-color: rgba(255, 95, 122, 0.2);
+}
+
+.panel {
+  padding: 20px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(17, 26, 72, 0.76), rgba(8, 13, 36, 0.82));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.section-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.setup-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.setup-copy {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(2, 5, 16, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.menu-panel {
+  width: min(100%, 560px);
+  border-radius: 30px;
+  padding: 22px;
+  background: linear-gradient(180deg, rgba(16, 25, 70, 0.95), rgba(8, 13, 38, 0.96));
+  border: 1px solid rgba(136, 160, 255, 0.18);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+  display: grid;
+  gap: 18px;
+}
+
+.menu-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.menu-close-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.field-group {
+  display: grid;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field-control {
+  min-height: 56px;
+  border-radius: 16px;
+  border: 1px solid rgba(145, 164, 255, 0.16);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  padding: 0 16px;
+  outline: none;
+}
+
+.setup-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.panel-link-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(145, 164, 255, 0.12);
+}
+
+.panel-label {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.share-link-preview {
+  word-break: break-word;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.image-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  background: rgba(2, 4, 12, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.image-overlay-inner {
+  position: relative;
+  width: min(100%, 680px);
+  max-height: 92vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-card-image {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.48);
+}
+
+.image-close-btn {
+  position: absolute;
+  top: -10px;
+  right: -2px;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(8, 14, 40, 0.84);
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 900;
+  z-index: 2;
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --card-max: min(100vw - 52px, 520px);
   }
 
-  state.currentIndex += 1;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.log.push("Round " + (state.currentIndex + 1) + ": next card revealed.");
-  saveState();
-  render();
-}
-
-function getRarityClass(rarity) {
-  const safe = String(rarity || "").toLowerCase().replace(/\s+/g, "-").replace(/'/g, "");
-  return "rarity-" + safe;
-}
-
-function getStatusText() {
-  if (state.finished) return "Match finished.";
-  if (!state.selectedStat) return "Choose a stat.";
-  if (!state.roundResolved) return "Confirm the round result.";
-  return "Round resolved.";
-}
-
-function getResultBadge() {
-  if (!state.roundResolved) {
-    return '<span class="status-badge badge-neutral">Round Open</span>';
-  }
-  if (state.roundResult === "win") {
-    return '<span class="status-badge badge-win">Win Locked</span>';
-  }
-  if (state.roundResult === "lose") {
-    return '<span class="status-badge badge-lose">Lose Locked</span>';
-  }
-  return '<span class="status-badge badge-draw">Draw Locked</span>';
-}
-
-function buildMenuOverlay() {
-  if (!state.menuOpen) return "";
-
-  const allowedSizes = [4, 6, 8, 10, 12, 16, 20].filter(function (size) {
-    return size <= CARD_POOL.length;
-  });
-
-  return `
-    <div class="menu-overlay">
-      <section class="menu-panel">
-        <div class="menu-panel-header">
-          <div>
-            <p class="section-eyebrow">TFU Duel Menu</p>
-            <h2 class="setup-title">Match Setup</h2>
-          </div>
-          <button id="closeMenuBtn" class="menu-close-btn" type="button">✕</button>
-        </div>
-
-        <p class="setup-copy">
-          Use Local Match for one-device play. Use Linked Match to generate a shareable link for Player 2.
-        </p>
-
-        <div class="field-group">
-          <label for="deckSizeSelect" class="field-label">Deck Size (Local Mode)</label>
-          <select id="deckSizeSelect" class="field-control">
-            ${allowedSizes
-              .map(function (size) {
-                return '<option value="' + size + '"' + (size === state.deckSize ? " selected" : "") + ">" + size + " Cards</option>";
-              })
-              .join("")}
-          </select>
-        </div>
-
-        <div class="setup-actions">
-          <button id="startLocalMatchBtn" class="btn btn-primary" type="button">Start Local Match</button>
-          <button id="startLinkedMatchBtn" class="btn btn-secondary" type="button">Create Linked Match</button>
-          <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
-        </div>
-
-        ${
-          state.matchMode === "linked" && state.playerRole === 1 && state.shareLink
-            ? `
-              <div class="panel-link-box">
-                <p class="panel-label">Player 2 Invite Link</p>
-                <div class="share-link-preview">${escapeHtml(state.shareLink)}</div>
-                <button id="copyShareLinkBtn" class="btn btn-primary" type="button">Copy Link</button>
-              </div>
-            `
-            : ""
-        }
-      </section>
-    </div>
-  `;
-}
-
-function buildImageOverlay(card) {
-  if (!state.imageOpen || !card) return "";
-
-  return `
-    <div id="imageOverlay" class="image-overlay">
-      <div class="image-overlay-inner">
-        <button id="closeImageBtn" class="image-close-btn" type="button">✕</button>
-        <img class="fullscreen-card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
-      </div>
-    </div>
-  `;
-}
-
-function buildLinkedInfoBar() {
-  if (state.matchMode !== "linked") return "";
-
-  return `
-    <section class="linked-mini-bar">
-      <div><span>Mode</span><strong>Linked</strong></div>
-      <div><span>Player</span><strong>P${state.playerRole}</strong></div>
-      ${
-        state.playerRole === 1 && state.shareLink
-          ? `<button id="copyShareLinkInlineBtn" class="mini-link-btn" type="button">Copy Link</button>`
-          : `<div><span>Seed</span><strong>${escapeHtml((state.sharedSeed || "").slice(0, 6))}</strong></div>`
-      }
-    </section>
-  `;
-}
-
-function buildSideButton(statKey, side, isSelected) {
-  return `
-    <button
-      class="side-stick ${side} ${isSelected ? "selected" : ""}"
-      data-select-stat="${statKey}"
-      type="button"
-      ${state.finished || state.roundResolved ? "disabled" : ""}
-    >
-      <span class="stick-short">${statKey}</span>
-    </button>
-  `;
-}
-
-function buildBottomFloatingButtons() {
-  return `
-    <div class="bottom-float-actions">
-      <button id="winBtn" class="float-action action-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>WIN</button>
-      <button id="drawBtn" class="float-action action-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>DRAW</button>
-      <button id="loseBtn" class="float-action action-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>LOSE</button>
-      <button id="nextCardBtn" class="float-action action-next" type="button" ${!state.roundResolved ? "disabled" : ""}>NEXT</button>
-    </div>
-  `;
-}
-
-function buildCompactHud(totalCards) {
-  const roundNumber = state.finished ? totalCards : totalCards ? state.currentIndex + 1 : 0;
-
-  return `
-    <section class="compact-hud-bar">
-      <div class="hud-chip">
-        <span class="hud-label">Round</span>
-        <strong>${roundNumber}/${totalCards || state.deckSize}</strong>
-      </div>
-      <div class="hud-chip">
-        <span class="hud-label">Score</span>
-        <strong>${state.score.wins}/${state.score.losses}/${state.score.draws}</strong>
-      </div>
-      <div class="hud-chip">
-        <span class="hud-label">Selected</span>
-        <strong>${state.selectedStat || "—"}</strong>
-      </div>
-      <div class="hud-chip hud-chip-status">
-        ${getResultBadge()}
-      </div>
-    </section>
-  `;
-}
-
-function buildFooterInfo() {
-  return `
-    <section class="footer-info-bar">
-      <div class="footer-status-text">${getStatusText()}</div>
-      <button id="resetScoreBtn" class="btn btn-secondary small" type="button">Reset Score</button>
-    </section>
-  `;
-}
-
-function buildGameContent() {
-  const card = getCurrentCard();
-  const totalCards = state.deck.length;
-
-  if (!card) {
-    return `
-      ${buildLinkedInfoBar()}
-      <section class="panel">
-        <h2 class="setup-title">No Active Match</h2>
-        <p class="setup-copy">Open the menu and start a match.</p>
-      </section>
-    `;
+  .card-stage {
+    min-height: auto;
+    padding-top: 6px;
   }
 
-  return `
-    ${buildLinkedInfoBar()}
-
-    <section class="arena-shell">
-      <div class="arena-top-meta">
-        <div class="arena-name-block">
-          <h2 class="arena-card-name">${escapeHtml(card.name)}</h2>
-          <p class="arena-card-title">${escapeHtml(card.title)}</p>
-        </div>
-
-        <div class="arena-top-right">
-          <div class="rarity-chip ${getRarityClass(card.rarity)}">${escapeHtml(card.rarity)}</div>
-        </div>
-      </div>
-
-      <div class="card-stage">
-        <div class="left-stick-column">
-          ${leftStats
-            .map(function (statKey) {
-              return buildSideButton(statKey, "left", state.selectedStat === statKey);
-            })
-            .join("")}
-        </div>
-
-        <div class="hero-card-zone">
-          <button id="openImageBtn" class="main-card-shell card-image-button" type="button">
-            <img class="main-card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" />
-            <div class="main-role-badge">${escapeHtml(card.type)}</div>
-            <div class="main-zoom-hint">Tap to expand</div>
-            ${buildBottomFloatingButtons()}
-          </button>
-        </div>
-
-        <div class="right-stick-column">
-          ${rightStats
-            .map(function (statKey) {
-              return buildSideButton(statKey, "right", state.selectedStat === statKey);
-            })
-            .join("")}
-        </div>
-      </div>
-
-      ${buildCompactHud(totalCards)}
-      ${buildFooterInfo()}
-    </section>
-  `;
-}
-
-function buildApp() {
-  return `
-    <section class="screen">
-      ${buildMenuOverlay()}
-      ${buildImageOverlay(getCurrentCard())}
-
-      <section class="micro-topbar ultra-thin-topbar">
-        <button id="menuToggleBtn" class="micro-btn" type="button">☰</button>
-        <div class="micro-title">TFU Duel</div>
-        <button id="quickNewMatchBtn" class="micro-btn alt" type="button">New</button>
-      </section>
-
-      ${buildGameContent()}
-    </section>
-  `;
-}
-
-function bindApp() {
-  const menuToggleBtn = document.getElementById("menuToggleBtn");
-  const closeMenuBtn = document.getElementById("closeMenuBtn");
-  const quickNewMatchBtn = document.getElementById("quickNewMatchBtn");
-  const deckSizeSelect = document.getElementById("deckSizeSelect");
-  const startLocalMatchBtn = document.getElementById("startLocalMatchBtn");
-  const startLinkedMatchBtn = document.getElementById("startLinkedMatchBtn");
-  const resetAllBtn = document.getElementById("resetAllBtn");
-  const winBtn = document.getElementById("winBtn");
-  const drawBtn = document.getElementById("drawBtn");
-  const loseBtn = document.getElementById("loseBtn");
-  const nextCardBtn = document.getElementById("nextCardBtn");
-  const resetScoreBtn = document.getElementById("resetScoreBtn");
-  const openImageBtn = document.getElementById("openImageBtn");
-  const closeImageBtn = document.getElementById("closeImageBtn");
-  const imageOverlay = document.getElementById("imageOverlay");
-  const copyShareLinkBtn = document.getElementById("copyShareLinkBtn");
-  const copyShareLinkInlineBtn = document.getElementById("copyShareLinkInlineBtn");
-
-  if (menuToggleBtn) menuToggleBtn.addEventListener("click", function () { toggleMenu(); });
-  if (closeMenuBtn) closeMenuBtn.addEventListener("click", function () { toggleMenu(false); });
-  if (quickNewMatchBtn) quickNewMatchBtn.addEventListener("click", function () { createLocalMatch(true); });
-  if (deckSizeSelect) deckSizeSelect.addEventListener("change", function (event) { selectDeckSize(event.target.value); });
-  if (startLocalMatchBtn) startLocalMatchBtn.addEventListener("click", function () { createLocalMatch(true); });
-  if (startLinkedMatchBtn) startLinkedMatchBtn.addEventListener("click", function () { createLinkedMatch(false); });
-  if (resetAllBtn) resetAllBtn.addEventListener("click", fullReset);
-  if (winBtn) winBtn.addEventListener("click", function (event) { event.stopPropagation(); resolveRound("win"); });
-  if (drawBtn) drawBtn.addEventListener("click", function (event) { event.stopPropagation(); resolveRound("draw"); });
-  if (loseBtn) loseBtn.addEventListener("click", function (event) { event.stopPropagation(); resolveRound("lose"); });
-  if (nextCardBtn) nextCardBtn.addEventListener("click", function (event) { event.stopPropagation(); nextCard(); });
-  if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
-  if (openImageBtn) openImageBtn.addEventListener("click", openImage);
-  if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
-  if (copyShareLinkBtn) copyShareLinkBtn.addEventListener("click", copyShareLink);
-  if (copyShareLinkInlineBtn) copyShareLinkInlineBtn.addEventListener("click", copyShareLink);
-
-  if (imageOverlay) {
-    imageOverlay.addEventListener("click", function (event) {
-      if (event.target === imageOverlay) {
-        closeImage();
-      }
-    });
+  .side-stick {
+    width: 68px;
+    min-height: 58px;
+    font-size: 0.92rem;
   }
 
-  const statButtons = document.querySelectorAll("[data-select-stat]");
-  statButtons.forEach(function (button) {
-    button.addEventListener("click", function (event) {
-      event.stopPropagation();
-      selectStat(button.getAttribute("data-select-stat"));
-    });
-  });
+  .compact-hud-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bottom-float-actions {
+    grid-template-columns: repeat(2, 1fr);
+    width: calc(100% - 56px);
+  }
 }
 
-function render() {
-  if (!appView) return;
-  appView.innerHTML = buildApp();
-  bindApp();
+@media (max-width: 640px) {
+  :root {
+    --card-max: min(100vw - 34px, 470px);
+  }
+
+  .app-shell {
+    padding: 6px 6px 18px;
+  }
+
+  .screen {
+    gap: 10px;
+  }
+
+  .ultra-thin-topbar {
+    grid-template-columns: 78px 1fr 78px;
+    padding-top: 6px;
+  }
+
+  .micro-btn {
+    min-height: 50px;
+  }
+
+  .micro-title {
+    font-size: 1.1rem;
+  }
+
+  .arena-top-meta {
+    padding: 0 2px;
+  }
+
+  .arena-card-name {
+    font-size: 1.28rem;
+  }
+
+  .arena-card-title {
+    font-size: 0.96rem;
+  }
+
+  .rarity-chip {
+    padding: 10px 13px;
+    font-size: 0.78rem;
+  }
+
+  .card-stage {
+    min-height: auto;
+    padding-top: 2px;
+  }
+
+  .left-stick-column,
+  .right-stick-column {
+    gap: 10px;
+  }
+
+  .side-stick {
+    width: 58px;
+    min-height: 54px;
+    font-size: 0.84rem;
+    letter-spacing: 0.08em;
+  }
+
+  .side-stick.left {
+    padding-left: 8px;
+  }
+
+  .side-stick.right {
+    padding-right: 8px;
+  }
+
+  .main-role-badge,
+  .main-zoom-hint {
+    padding: 10px 14px;
+    font-size: 0.76rem;
+  }
+
+  .bottom-float-actions {
+    bottom: 18px;
+    gap: 8px;
+    width: calc(100% - 44px);
+  }
+
+  .float-action {
+    min-height: 56px;
+    font-size: 0.82rem;
+  }
+
+  .compact-hud-bar {
+    gap: 8px;
+  }
+
+  .hud-chip {
+    min-height: 70px;
+    padding: 10px 12px;
+  }
+
+  .hud-chip strong {
+    font-size: 1.04rem;
+  }
+
+  .footer-info-bar {
+    flex-direction: column;
+    align-items: stretch;
+    font-size: 0.92rem;
+  }
+
+  .linked-mini-bar {
+    grid-template-columns: 1fr;
+  }
 }
 
-const loadedFromUrl = parseUrlMatch();
-if (!loadedFromUrl) {
-  loadState();
+@media (max-width: 420px) {
+  :root {
+    --card-max: min(100vw - 26px, 420px);
+  }
+
+  .side-stick {
+    width: 52px;
+    min-height: 50px;
+    font-size: 0.78rem;
+  }
+
+  .main-role-badge {
+    min-width: 96px;
+  }
+
+  .main-zoom-hint {
+    font-size: 0.72rem;
+  }
+
+  .bottom-float-actions {
+    width: calc(100% - 34px);
+  }
+
+  .float-action {
+    min-height: 52px;
+    font-size: 0.76rem;
+  }
 }
-render();
