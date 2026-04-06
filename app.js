@@ -1,4 +1,4 @@
-const STORAGE_KEY = "tfu-duel-v16-linked";
+const STORAGE_KEY = "tfu-duel-v17-linked-reveal";
 const CARD_POOL = Array.isArray(window.cards)
   ? window.cards
   : (typeof cards !== "undefined" ? cards : []);
@@ -13,6 +13,7 @@ const state = {
   roundResolved: false,
   roundResult: null,
   finished: false,
+  opponentRevealed: false,
   score: {
     wins: 0,
     losses: 0,
@@ -48,6 +49,7 @@ function loadState() {
     state.roundResolved = Boolean(parsed.roundResolved);
     state.roundResult = parsed.roundResult || null;
     state.finished = Boolean(parsed.finished);
+    state.opponentRevealed = Boolean(parsed.opponentRevealed);
     state.score = {
       wins: Number(parsed.score?.wins) || 0,
       losses: Number(parsed.score?.losses) || 0,
@@ -155,6 +157,7 @@ function parseUrlMatch() {
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
+  state.opponentRevealed = false;
   state.menuOpen = false;
   state.imageOpen = false;
   state.score = { wins: 0, losses: 0, draws: 0 };
@@ -173,6 +176,14 @@ function clearUrlParams() {
 
 function getCurrentCard() {
   return state.deck[state.currentIndex] || null;
+}
+
+function getOpponentCard() {
+  if (state.matchMode !== "linked" || !state.sharedSeed) return null;
+
+  const split = splitDecksFromSeed(state.sharedSeed);
+  const opponentDeck = state.playerRole === 1 ? split.player2 : split.player1;
+  return opponentDeck[state.currentIndex] || null;
 }
 
 function toggleMenu(forceValue) {
@@ -207,6 +218,7 @@ function createLocalMatch(resetScore = false) {
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
+  state.opponentRevealed = false;
   state.menuOpen = false;
   state.imageOpen = false;
   state.matchMode = "local";
@@ -240,6 +252,7 @@ function createLinkedMatch(resetScore = true) {
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
+  state.opponentRevealed = false;
   state.menuOpen = false;
   state.imageOpen = false;
 
@@ -267,6 +280,7 @@ function fullReset() {
   state.roundResolved = false;
   state.roundResult = null;
   state.finished = false;
+  state.opponentRevealed = false;
   state.score = { wins: 0, losses: 0, draws: 0 };
   state.matchMode = "local";
   state.sharedSeed = null;
@@ -284,6 +298,18 @@ function resetScoreOnly() {
   render();
 }
 
+function computeRoundResult(myValue, opponentValue) {
+  if (myValue > opponentValue) return "win";
+  if (myValue < opponentValue) return "lose";
+  return "draw";
+}
+
+function applyScore(result) {
+  if (result === "win") state.score.wins += 1;
+  if (result === "lose") state.score.losses += 1;
+  if (result === "draw") state.score.draws += 1;
+}
+
 function selectStat(statKey) {
   if (state.finished || state.roundResolved) return;
   const card = getCurrentCard();
@@ -291,17 +317,30 @@ function selectStat(statKey) {
   if (!(statKey in card.stats)) return;
 
   state.selectedStat = statKey;
+
+  if (state.matchMode === "linked") {
+    const opponentCard = getOpponentCard();
+    if (!opponentCard || !(statKey in opponentCard.stats)) return;
+
+    const myValue = card.stats[statKey];
+    const opponentValue = opponentCard.stats[statKey];
+    const result = computeRoundResult(myValue, opponentValue);
+
+    applyScore(result);
+    state.opponentRevealed = true;
+    state.roundResolved = true;
+    state.roundResult = result;
+  }
+
   saveState();
   render();
 }
 
 function resolveRound(result) {
+  if (state.matchMode === "linked") return;
   if (!state.selectedStat || state.roundResolved || state.finished) return;
 
-  if (result === "win") state.score.wins += 1;
-  if (result === "lose") state.score.losses += 1;
-  if (result === "draw") state.score.draws += 1;
-
+  applyScore(result);
   state.roundResolved = true;
   state.roundResult = result;
   saveState();
@@ -324,6 +363,7 @@ function nextCard() {
   state.selectedStat = null;
   state.roundResolved = false;
   state.roundResult = null;
+  state.opponentRevealed = false;
   saveState();
   render();
 }
@@ -478,12 +518,42 @@ function buildSideButton(statKey, side) {
   `;
 }
 
-function buildBottomFloatButtons() {
+function buildLocalBottomFloatButtons() {
   return `
     <div class="bottom-float-actions">
       <button id="winBtn" class="float-action action-win" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>WIN</button>
       <button id="drawBtn" class="float-action action-draw" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>DRAW</button>
       <button id="loseBtn" class="float-action action-lose" type="button" ${!state.selectedStat || state.roundResolved ? "disabled" : ""}>LOSE</button>
+      <button id="nextCardBtn" class="float-action action-next" type="button" ${!state.roundResolved ? "disabled" : ""}>NEXT</button>
+    </div>
+  `;
+}
+
+function buildLinkedBottomFloatButtons() {
+  const currentCard = getCurrentCard();
+  const opponentCard = getOpponentCard();
+  const myValue = state.selectedStat && currentCard ? currentCard.stats[state.selectedStat] : "—";
+  const opponentValue = state.selectedStat && opponentCard ? opponentCard.stats[state.selectedStat] : "—";
+  const resultText =
+    state.roundResult === "win"
+      ? "YOU WIN"
+      : state.roundResult === "lose"
+        ? "YOU LOSE"
+        : state.roundResult === "draw"
+          ? "DRAW"
+          : "SELECT STAT";
+
+  return `
+    <div class="bottom-float-actions linked-float-actions">
+      <button class="float-action action-next" type="button" disabled>${state.selectedStat || "LINKED"}</button>
+      <button class="float-action action-draw" type="button" disabled>${myValue} VS ${opponentValue}</button>
+      <button class="float-action ${
+        state.roundResult === "win"
+          ? "action-win"
+          : state.roundResult === "lose"
+            ? "action-lose"
+            : "action-draw"
+      }" type="button" disabled>${resultText}</button>
       <button id="nextCardBtn" class="float-action action-next" type="button" ${!state.roundResolved ? "disabled" : ""}>NEXT</button>
     </div>
   `;
@@ -522,8 +592,37 @@ function buildFooterInfo() {
   `;
 }
 
+function buildMyCard(card) {
+  return `
+    <div class="card-visual-shell">
+      <img id="openImageBtn" class="main-card-image image-clickable" src="${card.image}" alt="${card.name}" />
+      ${
+        state.matchMode === "linked"
+          ? buildLinkedBottomFloatButtons()
+          : buildLocalBottomFloatButtons()
+      }
+    </div>
+  `;
+}
+
+function buildOpponentCard(card) {
+  if (!card) return "";
+
+  return `
+    <div class="opponent-card-shell ${state.opponentRevealed ? "revealed" : ""}">
+      <img class="main-card-image opponent-card-image" src="${card.image}" alt="${card.name}" />
+      ${
+        state.selectedStat
+          ? `<div class="opponent-stat-chip">${state.selectedStat}: ${card.stats[state.selectedStat]}</div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
 function buildGameContent() {
   const card = getCurrentCard();
+  const opponentCard = getOpponentCard();
   const totalCards = state.deck.length;
 
   if (!card) {
@@ -551,17 +650,22 @@ function buildGameContent() {
         </div>
       </div>
 
-      <div class="card-stage">
+      <div class="card-stage ${state.matchMode === "linked" && state.opponentRevealed ? "reveal-active" : ""}">
         <div class="left-stick-column">
           ${leftStats.map((statKey) => buildSideButton(statKey, "left")).join("")}
         </div>
 
-        <div class="hero-card-zone">
-          <div class="card-visual-shell">
-            <img id="openImageBtn" class="main-card-image image-clickable" src="${card.image}" alt="${card.name}" />
-            ${buildBottomFloatButtons()}
-          </div>
+        <div class="hero-card-zone player-card-zone ${state.matchMode === "linked" && state.opponentRevealed ? "shift-left" : ""}">
+          ${buildMyCard(card)}
         </div>
+
+        ${
+          state.matchMode === "linked"
+            ? `<div class="opponent-card-zone ${state.opponentRevealed ? "visible" : ""}">
+                 ${buildOpponentCard(opponentCard)}
+               </div>`
+            : ""
+        }
 
         <div class="right-stick-column">
           ${rightStats.map((statKey) => buildSideButton(statKey, "right")).join("")}
@@ -617,10 +721,27 @@ function bindApp() {
   if (startLocalMatchBtn) startLocalMatchBtn.addEventListener("click", () => createLocalMatch(true));
   if (startLinkedMatchBtn) startLinkedMatchBtn.addEventListener("click", () => createLinkedMatch(true));
   if (resetAllBtn) resetAllBtn.addEventListener("click", fullReset);
-  if (winBtn) winBtn.addEventListener("click", (event) => { event.stopPropagation(); resolveRound("win"); });
-  if (drawBtn) drawBtn.addEventListener("click", (event) => { event.stopPropagation(); resolveRound("draw"); });
-  if (loseBtn) loseBtn.addEventListener("click", (event) => { event.stopPropagation(); resolveRound("lose"); });
-  if (nextCardBtn) nextCardBtn.addEventListener("click", (event) => { event.stopPropagation(); nextCard(); });
+
+  if (winBtn) winBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    resolveRound("win");
+  });
+
+  if (drawBtn) drawBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    resolveRound("draw");
+  });
+
+  if (loseBtn) loseBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    resolveRound("lose");
+  });
+
+  if (nextCardBtn) nextCardBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    nextCard();
+  });
+
   if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
   if (openImageBtn) openImageBtn.addEventListener("click", openImage);
   if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
