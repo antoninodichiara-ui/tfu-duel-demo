@@ -1,4 +1,4 @@
-const STORAGE_KEY = "tfu-duel-v15-linked";
+const STORAGE_KEY = "tfu-duel-v14-local";
 const CARD_POOL = Array.isArray(window.cards)
   ? window.cards
   : (typeof cards !== "undefined" ? cards : []);
@@ -17,11 +17,7 @@ const state = {
     wins: 0,
     losses: 0,
     draws: 0
-  },
-  matchMode: "local",
-  sharedSeed: null,
-  playerRole: 1,
-  shareLink: ""
+  }
 };
 
 const leftStats = ["STR", "AGI", "VIT"];
@@ -39,7 +35,6 @@ function loadState() {
 
   try {
     const parsed = JSON.parse(raw);
-
     state.menuOpen = Boolean(parsed.menuOpen);
     state.imageOpen = false;
     state.deckSize = Number(parsed.deckSize) || 8;
@@ -54,10 +49,6 @@ function loadState() {
       losses: Number(parsed.score?.losses) || 0,
       draws: Number(parsed.score?.draws) || 0
     };
-    state.matchMode = parsed.matchMode || "local";
-    state.sharedSeed = parsed.sharedSeed || null;
-    state.playerRole = parsed.playerRole === 2 ? 2 : 1;
-    state.shareLink = parsed.shareLink || "";
     return true;
   } catch (error) {
     console.error("State load failed:", error);
@@ -72,107 +63,6 @@ function shuffle(array) {
     [clone[i], clone[j]] = [clone[j], clone[i]];
   }
   return clone;
-}
-
-function stringToSeed(str) {
-  let hash = 2166136261;
-  for (let i = 0; i < str.length; i += 1) {
-    hash ^= str.charCodeAt(i);
-    hash +=
-      (hash << 1) +
-      (hash << 4) +
-      (hash << 7) +
-      (hash << 8) +
-      (hash << 24);
-  }
-  return Math.abs(hash >>> 0);
-}
-
-function seededRandomGenerator(seed) {
-  let value = seed % 2147483647;
-  if (value <= 0) value += 2147483646;
-
-  return function () {
-    value = (value * 16807) % 2147483647;
-    return (value - 1) / 2147483646;
-  };
-}
-
-function seededShuffle(array, seedString) {
-  const clone = array.slice();
-  const rng = seededRandomGenerator(stringToSeed(seedString));
-
-  for (let i = clone.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [clone[i], clone[j]] = [clone[j], clone[i]];
-  }
-
-  return clone;
-}
-
-function splitDecksFromSeed(seedString) {
-  const shuffled = seededShuffle(CARD_POOL, seedString);
-  const player1 = [];
-  const player2 = [];
-
-  for (let i = 0; i < shuffled.length; i += 1) {
-    if (i % 2 === 0) {
-      player1.push(shuffled[i]);
-    } else {
-      player2.push(shuffled[i]);
-    }
-  }
-
-  return {
-    player1,
-    player2
-  };
-}
-
-function buildShareLink(seedString) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("mode", "linked");
-  url.searchParams.set("seed", seedString);
-  url.searchParams.set("player", "2");
-  return url.toString();
-}
-
-function parseUrlMatch() {
-  const url = new URL(window.location.href);
-  const mode = url.searchParams.get("mode");
-  const seed = url.searchParams.get("seed");
-  const player = url.searchParams.get("player");
-
-  if (mode !== "linked" || !seed) return false;
-
-  const split = splitDecksFromSeed(seed);
-  const role = player === "2" ? 2 : 1;
-
-  state.matchMode = "linked";
-  state.sharedSeed = seed;
-  state.playerRole = role;
-  state.shareLink = role === 1 ? buildShareLink(seed) : "";
-  state.deck = role === 1 ? split.player1 : split.player2;
-  state.deckSize = state.deck.length;
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.menuOpen = false;
-  state.imageOpen = false;
-  state.score = { wins: 0, losses: 0, draws: 0 };
-
-  saveState();
-  return true;
-}
-
-function clearUrlParams() {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("mode");
-  url.searchParams.delete("seed");
-  url.searchParams.delete("player");
-  window.history.replaceState({}, "", url.toString());
 }
 
 function getCurrentCard() {
@@ -205,7 +95,6 @@ function selectDeckSize(value) {
 
 function createLocalMatch(resetScore = false) {
   const safeDeckSize = Math.max(4, Math.min(state.deckSize, CARD_POOL.length));
-
   state.deck = shuffle(CARD_POOL).slice(0, safeDeckSize);
   state.currentIndex = 0;
   state.selectedStat = null;
@@ -214,49 +103,10 @@ function createLocalMatch(resetScore = false) {
   state.finished = false;
   state.menuOpen = false;
   state.imageOpen = false;
-  state.matchMode = "local";
-  state.sharedSeed = null;
-  state.playerRole = 1;
-  state.shareLink = "";
 
   if (resetScore) {
     state.score = { wins: 0, losses: 0, draws: 0 };
   }
-
-  clearUrlParams();
-  saveState();
-  render();
-}
-
-function createLinkedMatch(resetScore = true) {
-  const seedString =
-    Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
-
-  const split = splitDecksFromSeed(seedString);
-
-  state.matchMode = "linked";
-  state.sharedSeed = seedString;
-  state.playerRole = 1;
-  state.shareLink = buildShareLink(seedString);
-  state.deck = split.player1;
-  state.deckSize = state.deck.length;
-  state.currentIndex = 0;
-  state.selectedStat = null;
-  state.roundResolved = false;
-  state.roundResult = null;
-  state.finished = false;
-  state.menuOpen = false;
-  state.imageOpen = false;
-
-  if (resetScore) {
-    state.score = { wins: 0, losses: 0, draws: 0 };
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("mode", "linked");
-  url.searchParams.set("seed", seedString);
-  url.searchParams.set("player", "1");
-  window.history.replaceState({}, "", url.toString());
 
   saveState();
   render();
@@ -273,12 +123,6 @@ function fullReset() {
   state.roundResult = null;
   state.finished = false;
   state.score = { wins: 0, losses: 0, draws: 0 };
-  state.matchMode = "local";
-  state.sharedSeed = null;
-  state.playerRole = 1;
-  state.shareLink = "";
-
-  clearUrlParams();
   saveState();
   render();
 }
@@ -291,7 +135,6 @@ function resetScoreOnly() {
 
 function selectStat(statKey) {
   if (state.finished || state.roundResolved) return;
-
   const card = getCurrentCard();
   if (!card) return;
   if (!(statKey in card.stats)) return;
@@ -332,18 +175,6 @@ function nextCard() {
   state.roundResult = null;
   saveState();
   render();
-}
-
-function copyShareLink() {
-  if (!state.shareLink) return;
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(state.shareLink).catch(function () {
-      window.prompt("Copy this link:", state.shareLink);
-    });
-  } else {
-    window.prompt("Copy this link:", state.shareLink);
-  }
 }
 
 function getRarityClass(rarity) {
@@ -391,11 +222,11 @@ function buildMenuOverlay() {
         </div>
 
         <p class="setup-copy">
-          Start a local match or create a linked match for Player 2.
+          Start a local match with your current card pool.
         </p>
 
         <div class="field-group">
-          <label for="deckSizeSelect" class="field-label">Deck Size (Local Match)</label>
+          <label for="deckSizeSelect" class="field-label">Deck Size</label>
           <select id="deckSizeSelect" class="field-control">
             ${allowedSizes
               .map(
@@ -407,22 +238,9 @@ function buildMenuOverlay() {
         </div>
 
         <div class="setup-actions">
-          <button id="startLocalMatchBtn" class="btn btn-primary" type="button">Start Local Match</button>
-          <button id="startLinkedMatchBtn" class="btn btn-secondary" type="button">Create Linked Match</button>
+          <button id="startLocalMatchBtn" class="btn btn-primary" type="button">Start Match</button>
           <button id="resetAllBtn" class="btn btn-danger" type="button">Full Reset</button>
         </div>
-
-        ${
-          state.matchMode === "linked" && state.playerRole === 1 && state.shareLink
-            ? `
-              <div class="panel-link-box">
-                <p class="panel-label">Player 2 Invite Link</p>
-                <div class="share-link-preview">${state.shareLink}</div>
-                <button id="copyShareLinkBtn" class="btn btn-primary" type="button">Copy Link</button>
-              </div>
-            `
-            : ""
-        }
       </section>
     </div>
   `;
@@ -438,28 +256,6 @@ function buildImageOverlay(card) {
         <img class="fullscreen-card-image" src="${card.image}" alt="${card.name}" />
       </div>
     </div>
-  `;
-}
-
-function buildLinkedInfoBar() {
-  if (state.matchMode !== "linked") return "";
-
-  return `
-    <section class="linked-mini-bar">
-      <div>
-        <span>Mode</span>
-        <strong>Linked</strong>
-      </div>
-      <div>
-        <span>Player</span>
-        <strong>P${state.playerRole}</strong>
-      </div>
-      ${
-        state.playerRole === 1 && state.shareLink
-          ? `<button id="copyShareLinkInlineBtn" class="mini-link-btn" type="button">Copy Link</button>`
-          : `<div><span>Seed</span><strong>${String(state.sharedSeed || "").slice(0, 6)}</strong></div>`
-      }
-    </section>
   `;
 }
 
@@ -526,7 +322,6 @@ function buildGameContent() {
 
   if (!card) {
     return `
-      ${buildLinkedInfoBar()}
       <section class="panel">
         <h2 class="setup-title">No Active Match</h2>
         <p class="setup-copy">Open the menu and start a match.</p>
@@ -535,8 +330,6 @@ function buildGameContent() {
   }
 
   return `
-    ${buildLinkedInfoBar()}
-
     <section class="arena-shell">
       <div class="arena-top-meta">
         <div class="arena-name-block">
@@ -595,53 +388,29 @@ function bindApp() {
   const quickNewMatchBtn = document.getElementById("quickNewMatchBtn");
   const deckSizeSelect = document.getElementById("deckSizeSelect");
   const startLocalMatchBtn = document.getElementById("startLocalMatchBtn");
-  const startLinkedMatchBtn = document.getElementById("startLinkedMatchBtn");
   const resetAllBtn = document.getElementById("resetAllBtn");
-  const resetScoreBtn = document.getElementById("resetScoreBtn");
   const winBtn = document.getElementById("winBtn");
   const drawBtn = document.getElementById("drawBtn");
   const loseBtn = document.getElementById("loseBtn");
   const nextCardBtn = document.getElementById("nextCardBtn");
+  const resetScoreBtn = document.getElementById("resetScoreBtn");
   const openImageBtn = document.getElementById("openImageBtn");
   const closeImageBtn = document.getElementById("closeImageBtn");
   const imageOverlay = document.getElementById("imageOverlay");
-  const copyShareLinkBtn = document.getElementById("copyShareLinkBtn");
-  const copyShareLinkInlineBtn = document.getElementById("copyShareLinkInlineBtn");
 
   if (menuToggleBtn) menuToggleBtn.addEventListener("click", () => toggleMenu());
   if (closeMenuBtn) closeMenuBtn.addEventListener("click", () => toggleMenu(false));
-  if (quickNewMatchBtn) quickNewMatchBtn.addEventListener("click", () => createLocalMatch(false));
+  if (quickNewMatchBtn) quickNewMatchBtn.addEventListener("click", () => createLocalMatch(true));
   if (deckSizeSelect) deckSizeSelect.addEventListener("change", (event) => selectDeckSize(event.target.value));
   if (startLocalMatchBtn) startLocalMatchBtn.addEventListener("click", () => createLocalMatch(true));
-  if (startLinkedMatchBtn) startLinkedMatchBtn.addEventListener("click", () => createLinkedMatch(true));
   if (resetAllBtn) resetAllBtn.addEventListener("click", fullReset);
+  if (winBtn) winBtn.addEventListener("click", (event) => { event.stopPropagation(); resolveRound("win"); });
+  if (drawBtn) drawBtn.addEventListener("click", (event) => { event.stopPropagation(); resolveRound("draw"); });
+  if (loseBtn) loseBtn.addEventListener("click", (event) => { event.stopPropagation(); resolveRound("lose"); });
+  if (nextCardBtn) nextCardBtn.addEventListener("click", (event) => { event.stopPropagation(); nextCard(); });
   if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
-
-  if (winBtn) winBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    resolveRound("win");
-  });
-
-  if (drawBtn) drawBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    resolveRound("draw");
-  });
-
-  if (loseBtn) loseBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    resolveRound("lose");
-  });
-
-  if (nextCardBtn) nextCardBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    nextCard();
-  });
-
   if (openImageBtn) openImageBtn.addEventListener("click", openImage);
   if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
-
-  if (copyShareLinkBtn) copyShareLinkBtn.addEventListener("click", copyShareLink);
-  if (copyShareLinkInlineBtn) copyShareLinkInlineBtn.addEventListener("click", copyShareLink);
 
   if (imageOverlay) {
     imageOverlay.addEventListener("click", (event) => {
@@ -663,8 +432,5 @@ function render() {
   bindApp();
 }
 
-const loadedFromUrl = parseUrlMatch();
-if (!loadedFromUrl) {
-  loadState();
-}
+loadState();
 render();
