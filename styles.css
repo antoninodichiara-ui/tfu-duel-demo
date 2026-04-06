@@ -841,3 +841,139 @@ p {
     grid-template-columns: 1fr;
   }
 }
+.player-card-zone {
+  transition: transform 0.48s ease, width 0.48s ease, opacity 0.3s ease;
+}
+
+.player-card-zone.shift-left {
+  transform: translateX(-14%);
+}
+
+.opponent-card-zone {
+  position: absolute;
+  right: 4%;
+  top: 50%;
+  transform: translateY(-50%) translateX(80px) scale(0.9);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.42s ease;
+  width: min(42vw, 240px);
+  display: flex;
+  justify-content: center;
+}
+
+.opponent-card-zone.visible {
+  transform: translateY(-50%) translateX(0) scale(1);
+  opacity: 1;
+}
+
+.opponent-card-shell {
+  position: relative;
+  width: 100%;
+}
+
+.opponent-card-image {
+  width: 100%;
+  border-radius: 24px;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.opponent-stat-chip {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  min-width: 120px;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(10, 16, 42, 0.82);
+  border: 1px solid rgba(160, 190, 255, 0.18);
+  color: #eef3ff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.card-stage.reveal-active .left-stick-column,
+.card-stage.reveal-active .right-stick-column {
+  opacity: 0.88;
+}
+
+.linked-float-actions {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 980px) {
+  .player-card-zone.shift-left {
+    transform: translateX(-10%);
+  }
+
+  .opponent-card-zone {
+    width: min(38vw, 220px);
+    right: 1%;
+  }
+}
+
+@media (max-width: 760px) {
+  .player-card-zone.shift-left {
+    transform: translateX(-8%);
+  }
+
+  .opponent-card-zone {
+    width: min(36vw, 180px);
+    right: 0;
+  }
+
+  .opponent-stat-chip {
+    min-width: 104px;
+    font-size: 0.74rem;
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .player-card-zone.shift-left {
+    transform: translateX(-7%);
+  }
+
+  .opponent-card-zone {
+    width: min(34vw, 152px);
+    right: -2px;
+    transform: translateY(-50%) translateX(42px) scale(0.92);
+  }
+
+  .opponent-card-zone.visible {
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+
+  .linked-float-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .player-card-zone.shift-left {
+    transform: translateX(-6%);
+  }
+
+  .opponent-card-zone {
+    width: min(32vw, 132px);
+    right: -4px;
+  }
+
+  .opponent-stat-chip {
+    min-width: 88px;
+    font-size: 0.68rem;
+    padding: 7px 8px;
+    bottom: 8px;
+  }
+}
