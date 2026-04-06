@@ -1,4 +1,4 @@
-const STORAGE_KEY = "tfu-duel-v17-linked-reveal";
+const STORAGE_KEY = "tfu-duel-v19-fullscreen-stat";
 const CARD_POOL = Array.isArray(window.cards)
   ? window.cards
   : (typeof cards !== "undefined" ? cards : []);
@@ -6,6 +6,7 @@ const CARD_POOL = Array.isArray(window.cards)
 const state = {
   menuOpen: false,
   imageOpen: false,
+  imageCard: null,
   deckSize: 8,
   deck: [],
   currentIndex: 0,
@@ -42,6 +43,7 @@ function loadState() {
     const parsed = JSON.parse(raw);
     state.menuOpen = Boolean(parsed.menuOpen);
     state.imageOpen = false;
+    state.imageCard = null;
     state.deckSize = Number(parsed.deckSize) || 8;
     state.deck = Array.isArray(parsed.deck) ? parsed.deck : [];
     state.currentIndex = Number.isInteger(parsed.currentIndex) ? parsed.currentIndex : 0;
@@ -160,6 +162,7 @@ function parseUrlMatch() {
   state.opponentRevealed = false;
   state.menuOpen = false;
   state.imageOpen = false;
+  state.imageCard = null;
   state.score = { wins: 0, losses: 0, draws: 0 };
 
   saveState();
@@ -192,13 +195,16 @@ function toggleMenu(forceValue) {
   render();
 }
 
-function openImage() {
+function openImage(card) {
+  if (!card) return;
+  state.imageCard = card;
   state.imageOpen = true;
   render();
 }
 
 function closeImage() {
   state.imageOpen = false;
+  state.imageCard = null;
   render();
 }
 
@@ -221,6 +227,7 @@ function createLocalMatch(resetScore = false) {
   state.opponentRevealed = false;
   state.menuOpen = false;
   state.imageOpen = false;
+  state.imageCard = null;
   state.matchMode = "local";
   state.sharedSeed = null;
   state.playerRole = 1;
@@ -255,6 +262,7 @@ function createLinkedMatch(resetScore = true) {
   state.opponentRevealed = false;
   state.menuOpen = false;
   state.imageOpen = false;
+  state.imageCard = null;
 
   if (resetScore) {
     state.score = { wins: 0, losses: 0, draws: 0 };
@@ -273,6 +281,7 @@ function createLinkedMatch(resetScore = true) {
 function fullReset() {
   state.menuOpen = true;
   state.imageOpen = false;
+  state.imageCard = null;
   state.deckSize = 8;
   state.deck = [];
   state.currentIndex = 0;
@@ -364,6 +373,8 @@ function nextCard() {
   state.roundResolved = false;
   state.roundResult = null;
   state.opponentRevealed = false;
+  state.imageOpen = false;
+  state.imageCard = null;
   saveState();
   render();
 }
@@ -492,14 +503,23 @@ function buildMenuOverlay() {
   `;
 }
 
-function buildImageOverlay(card) {
+function buildImageOverlay() {
+  const card = state.imageCard;
   if (!state.imageOpen || !card) return "";
+
+  const statBadge =
+    state.selectedStat && card.stats && state.selectedStat in card.stats
+      ? `<div class="fullscreen-stat-badge">${state.selectedStat}: ${card.stats[state.selectedStat]}</div>`
+      : "";
 
   return `
     <div id="imageOverlay" class="image-overlay">
       <div class="image-overlay-inner">
         <button id="closeImageBtn" class="image-close-btn" type="button">✕</button>
-        <img class="fullscreen-card-image" src="${card.image}" alt="${card.name}" />
+        <div class="fullscreen-card-shell">
+          <img class="fullscreen-card-image" src="${card.image}" alt="${card.name}" />
+          ${statBadge}
+        </div>
       </div>
     </div>
   `;
@@ -595,7 +615,12 @@ function buildFooterInfo() {
 function buildMyCard(card) {
   return `
     <div class="card-visual-shell">
-      <img id="openImageBtn" class="main-card-image image-clickable" src="${card.image}" alt="${card.name}" />
+      <img
+        id="openMyImageBtn"
+        class="main-card-image image-clickable"
+        src="${card.image}"
+        alt="${card.name}"
+      />
       ${
         state.matchMode === "linked"
           ? buildLinkedBottomFloatButtons()
@@ -610,7 +635,12 @@ function buildOpponentCard(card) {
 
   return `
     <div class="opponent-card-shell ${state.opponentRevealed ? "revealed" : ""}">
-      <img class="main-card-image opponent-card-image" src="${card.image}" alt="${card.name}" />
+      <img
+        id="openOpponentImageBtn"
+        class="main-card-image opponent-card-image image-clickable"
+        src="${card.image}"
+        alt="${card.name}"
+      />
       ${
         state.selectedStat
           ? `<div class="opponent-stat-chip">${state.selectedStat}: ${card.stats[state.selectedStat]}</div>`
@@ -682,7 +712,7 @@ function buildApp() {
   return `
     <section class="screen">
       ${buildMenuOverlay()}
-      ${buildImageOverlay(getCurrentCard())}
+      ${buildImageOverlay()}
 
       <section class="micro-topbar ultra-thin-topbar">
         <button id="menuToggleBtn" class="micro-btn" type="button">☰</button>
@@ -708,7 +738,8 @@ function bindApp() {
   const loseBtn = document.getElementById("loseBtn");
   const nextCardBtn = document.getElementById("nextCardBtn");
   const resetScoreBtn = document.getElementById("resetScoreBtn");
-  const openImageBtn = document.getElementById("openImageBtn");
+  const openMyImageBtn = document.getElementById("openMyImageBtn");
+  const openOpponentImageBtn = document.getElementById("openOpponentImageBtn");
   const closeImageBtn = document.getElementById("closeImageBtn");
   const imageOverlay = document.getElementById("imageOverlay");
   const copyShareLinkBtn = document.getElementById("copyShareLinkBtn");
@@ -743,7 +774,19 @@ function bindApp() {
   });
 
   if (resetScoreBtn) resetScoreBtn.addEventListener("click", resetScoreOnly);
-  if (openImageBtn) openImageBtn.addEventListener("click", openImage);
+
+  if (openMyImageBtn) {
+    openMyImageBtn.addEventListener("click", () => {
+      openImage(getCurrentCard());
+    });
+  }
+
+  if (openOpponentImageBtn) {
+    openOpponentImageBtn.addEventListener("click", () => {
+      openImage(getOpponentCard());
+    });
+  }
+
   if (closeImageBtn) closeImageBtn.addEventListener("click", closeImage);
   if (copyShareLinkBtn) copyShareLinkBtn.addEventListener("click", copyShareLink);
   if (copyShareLinkInlineBtn) copyShareLinkInlineBtn.addEventListener("click", copyShareLink);
